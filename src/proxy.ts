@@ -1,21 +1,20 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import type { NextRequest } from "next/server";
 
-// Placeholder proxy for Phase 1 (menggantikan middleware.ts sesuai konvensi terbaru Next.js)
-// Di Phase 2 (Authentication), kita akan menambahkan logika Supabase Auth di sini.
-export function proxy(request: NextRequest) {
-  return NextResponse.next()
+import { updateSession } from "@/lib/supabase/proxy";
+
+export async function proxy(request: NextRequest) {
+  return updateSession(request);
 }
 
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * Jalankan proxy pada route aplikasi, kecuali:
+     * - API routes
+     * - file internal Next.js
+     * - favicon
+     * - aset gambar publik
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
-}
+};
