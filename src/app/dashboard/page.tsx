@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 import {
   Activity,
@@ -187,7 +189,7 @@ export default async function DashboardPage() {
               title="Latest Energy"
               value={formatScore(
                 dashboard.latestRating?.energy_rating ??
-                  null,
+                null,
               )}
               description={
                 latestRatingDate
@@ -201,7 +203,7 @@ export default async function DashboardPage() {
               title="Latest Focus"
               value={formatScore(
                 dashboard.latestRating?.focus_rating ??
-                  null,
+                null,
               )}
               description={
                 dashboard.latestRating?.focus_has_data
@@ -277,8 +279,7 @@ export default async function DashboardPage() {
                 <DataItem
                   label="Input closes"
                   value={formatDateTime(
-                    dashboard.todayMatch
-                      .input_closes_at,
+                    dashboard.todayMatch.input_closes_at,
                     dashboard.timeZone,
                   )}
                 />
@@ -286,8 +287,7 @@ export default async function DashboardPage() {
                 <DataItem
                   label="Rating queued at"
                   value={formatDateTime(
-                    dashboard.todayMatch
-                      .rating_queues_at,
+                    dashboard.todayMatch.rating_queues_at,
                     dashboard.timeZone,
                   )}
                 />
@@ -295,8 +295,8 @@ export default async function DashboardPage() {
                 <DataItem
                   label="Today rating"
                   value={formatScore(
-                    dashboard.todayRating
-                      ?.overall_rating ?? null,
+                    dashboard.todayRating?.overall_rating ??
+                    null,
                   )}
                 />
               </dl>
@@ -306,6 +306,17 @@ export default async function DashboardPage() {
                 description="No row was found in daily_matches for the current date and timezone."
               />
             )}
+
+            {/* Tombol masuk ke halaman input aktivitas */}
+            <div className="mt-5">
+              <Link
+                href="/dashboard/today"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-black transition hover:bg-zinc-200"
+              >
+                Open Today Match
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </DataPanel>
 
           <DataPanel
@@ -335,8 +346,7 @@ export default async function DashboardPage() {
                   <DataItem
                     label="Source"
                     value={formatStatus(
-                      dashboard.bestPerformance.rating
-                        .source,
+                      dashboard.bestPerformance.rating.source,
                     )}
                   />
 
@@ -426,7 +436,7 @@ export default async function DashboardPage() {
                         <td className="px-3 py-4 font-medium">
                           {formatScore(
                             rating?.overall_rating ??
-                              null,
+                            null,
                           )}
                         </td>
 
