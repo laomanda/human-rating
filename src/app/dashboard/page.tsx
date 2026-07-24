@@ -20,7 +20,6 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
-
 import { DailyMatchLiveStatus } from "@/components/daily-match/daily-match-live-status";
 
 import {
@@ -85,8 +84,10 @@ export default async function DashboardPage() {
   const latestRatingDate =
     dashboard.latestRatingMatch?.match_date ?? null;
 
+  const serverNow = new Date().toISOString();
+
   const todayDate = getDateKeyForTimeZone(
-    new Date(),
+    new Date(serverNow),
     dashboard.timeZone,
   );
 
@@ -254,6 +255,26 @@ export default async function DashboardPage() {
             title="Today Match"
             subtitle={formatDateOnly(todayDate)}
           >
+            <DailyMatchLiveStatus
+              matchId={dashboard.todayMatch?.id ?? null}
+              matchDate={
+                dashboard.todayMatch?.match_date ?? null
+              }
+              timeZone={dashboard.timeZone}
+              status={dashboard.todayMatch?.status ?? null}
+              inputClosesAt={
+                dashboard.todayMatch?.input_closes_at ??
+                null
+              }
+              ratingQueuesAt={
+                dashboard.todayMatch?.rating_queues_at ??
+                null
+              }
+              serverNow={serverNow}
+              variant="compact"
+              className="mb-5"
+            />
+
             {dashboard.todayMatch ? (
               <dl className="grid gap-4 sm:grid-cols-2">
                 <DataItem

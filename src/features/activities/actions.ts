@@ -139,6 +139,13 @@ async function assertEditableDailyMatch(
 function handleActionError(
   error: unknown,
 ): ActivityActionState {
+  /*
+   * Segarkan dashboard dan Today Match setelah operasi
+   * gagal. Ini penting ketika backend baru saja mengubah
+   * lifecycle match menjadi locked atau queued.
+   */
+  revalidateActivityPages();
+
   if (error instanceof ActivityActionError) {
     return createActionState(
       "error",

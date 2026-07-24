@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import {
   AlertTriangle,
   ArrowLeft,
@@ -19,6 +21,8 @@ import {
 import { PhysicalActivityForm } from "@/components/activities/physical-activity-form";
 import { ProductiveActivityForm } from "@/components/activities/productive-activity-form";
 
+import { DailyMatchLiveStatus } from "@/components/daily-match/daily-match-live-status";
+
 import {
   formatDailyMatchStatus,
   isDailyMatchEditable,
@@ -27,6 +31,7 @@ import {
 import { getTodayActivityData } from "@/features/activities/queries";
 
 import {
+  DEFAULT_TIME_ZONE,
   formatDateOnly,
   formatDateTime,
 } from "@/features/dashboard/formatters";
@@ -53,13 +58,19 @@ export default async function TodayMatchPage() {
     redirect("/login");
   }
 
+  const serverNow = new Date().toISOString();
+
   const data = await getTodayActivityData(
     supabase,
     user,
   );
 
   if (!data.dailyMatch) {
-    return <DailyMatchUnavailable />;
+    return (
+      <DailyMatchUnavailable
+        serverNow={serverNow}
+      />
+    );
   }
 
   const dailyMatch = data.dailyMatch;
@@ -163,6 +174,21 @@ export default async function TodayMatchPage() {
           ) : null}
         </section>
 
+        <DailyMatchLiveStatus
+          matchId={dailyMatch.id}
+          matchDate={dailyMatch.match_date}
+          timeZone={dailyMatch.timezone}
+          status={dailyMatch.status}
+          inputClosesAt={
+            dailyMatch.input_closes_at
+          }
+          ratingQueuesAt={
+            dailyMatch.rating_queues_at
+          }
+          serverNow={serverNow}
+          variant="panel"
+        />
+
         {!canEdit ? (
           <section className="flex items-start gap-4 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5">
             <div className="rounded-xl bg-amber-400/10 p-2.5 text-amber-300">
@@ -259,7 +285,7 @@ function SummaryItem({
   label,
   value,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
 }) {
@@ -277,7 +303,11 @@ function SummaryItem({
   );
 }
 
-function DailyMatchUnavailable() {
+function DailyMatchUnavailable({
+  serverNow,
+}: {
+  serverNow: string;
+}) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
       <section className="w-full max-w-lg rounded-2xl border border-amber-400/20 bg-zinc-950 p-8 text-center">
@@ -294,6 +324,18 @@ function DailyMatchUnavailable() {
           activation date. This can occur when an account is
           created after the configured activation cutoff.
         </p>
+
+        <DailyMatchLiveStatus
+          matchId={null}
+          matchDate={null}
+          timeZone={DEFAULT_TIME_ZONE}
+          status={null}
+          inputClosesAt={null}
+          ratingQueuesAt={null}
+          serverNow={serverNow}
+          variant="panel"
+          className="mt-6 text-left"
+        />
 
         <Link
           href="/dashboard"
