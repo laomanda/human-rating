@@ -21,6 +21,8 @@ import { redirect } from "next/navigation";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
 
+import { DailyMatchLiveStatus } from "@/components/daily-match/daily-match-live-status";
+
 import {
   formatClock,
   formatDateOnly,
