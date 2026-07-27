@@ -56,7 +56,7 @@ export const APP_NAVIGATION: readonly AppNavigationItem[] = [
     href: "/dashboard/profile",
     icon: UserRound,
     exact: false,
-    enabled: false,
+    enabled: true,
   },
 ];
 

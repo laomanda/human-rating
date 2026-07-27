@@ -1,6 +1,12 @@
 export type ProfileSummary = {
   id: string;
   username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  timezone: string;
+  account_status: string;
+  created_at: string;
 };
 
 export type AppConfigRow = {

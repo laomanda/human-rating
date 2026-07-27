@@ -18,8 +18,11 @@ const MIME_TYPE_TO_EXTENSION: Record<
   "image/webp": "webp",
 };
 
+const PUBLIC_AVATAR_PATH_MARKER =
+  `/storage/v1/object/public/${AVATAR_BUCKET}/`;
+
 /**
- * Mengunggah avatar baru ke folder user.
+ * Mengunggah avatar baru ke folder milik user.
  *
  * Object path:
  * {userId}/avatar-{uuid}.{extension}
@@ -79,10 +82,59 @@ export async function uploadAvatar(
 }
 
 /**
- * Cleanup avatar yang gagal digunakan oleh profil.
+ * Mengambil object path avatar HuMob dari public URL.
  *
- * Error cleanup dicatat tetapi tidak menggantikan
- * error utama onboarding.
+ * URL eksternal seperti avatar Google akan menghasilkan null.
+ * Path juga harus berada di folder milik user yang bersangkutan.
+ */
+export function getManagedAvatarPath(
+  avatarUrl: string | null,
+  userId: string,
+): string | null {
+  if (!avatarUrl) {
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(avatarUrl);
+
+    const markerIndex =
+      parsedUrl.pathname.indexOf(
+        PUBLIC_AVATAR_PATH_MARKER,
+      );
+
+    if (markerIndex < 0) {
+      return null;
+    }
+
+    const encodedPath =
+      parsedUrl.pathname.slice(
+        markerIndex +
+          PUBLIC_AVATAR_PATH_MARKER.length,
+      );
+
+    const decodedPath =
+      decodeURIComponent(encodedPath);
+
+    if (
+      !decodedPath.startsWith(
+        `${userId}/`,
+      )
+    ) {
+      return null;
+    }
+
+    return decodedPath;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Menghapus avatar dari bucket HuMob.
+ *
+ * Error cleanup hanya dicatat agar tidak
+ * menggantikan hasil utama update profil.
  */
 export async function removeAvatar(
   supabase: SupabaseClient,

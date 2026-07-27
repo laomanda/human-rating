@@ -22,7 +22,13 @@ import type {
 
 const PROFILE_SELECT = `
   id,
-  username
+  username,
+  full_name,
+  avatar_url,
+  bio,
+  timezone,
+  account_status,
+  created_at
 `;
 
 const APP_CONFIG_SELECT = `
@@ -131,6 +137,17 @@ function normalizeProfile(
   return {
     id,
     username: asString(row.username),
+    full_name: asString(row.full_name),
+    avatar_url: asString(row.avatar_url),
+    bio: asString(row.bio),
+    timezone: normalizeTimeZone(
+      asString(row.timezone),
+    ),
+    account_status:
+      asString(row.account_status) ??
+      "unknown",
+    created_at:
+      asString(row.created_at) ?? "",
   };
 }
 
@@ -530,8 +547,9 @@ export async function getDashboardData(
   );
 
   const timeZone =
-    matches.at(0)?.timezone ??
-    DEFAULT_TIME_ZONE;
+  matches.at(0)?.timezone ??
+  profile?.timezone ??
+  DEFAULT_TIME_ZONE;
 
   const todayDate = getDateKeyForTimeZone(
     new Date(),

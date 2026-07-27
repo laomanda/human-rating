@@ -14,11 +14,11 @@ import {
   Trophy,
 } from "lucide-react";
 
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DailyMatchLiveStatus } from "@/components/daily-match/daily-match-live-status";
+import { ProfileAvatar } from "@/features/profile/profile-avatar";
 
 import {
   formatClock,
@@ -33,13 +33,6 @@ import {
 import { getDashboardData } from "@/features/dashboard/queries";
 
 import { createClient } from "@/lib/supabase/server";
-
-type GoogleUserMetadata = {
-  full_name?: string;
-  name?: string;
-  avatar_url?: string;
-  picture?: string;
-};
 
 export const metadata = {
   title: "Beranda | HuMob",
@@ -66,30 +59,16 @@ export default async function DashboardPage() {
     user,
   );
 
-  const googleMetadata =
-    user.user_metadata as GoogleUserMetadata;
-
-  /*
-   * Email tidak digunakan sebagai nama fallback
-   * karena email merupakan data autentikasi internal
-   * dan tidak boleh ditampilkan pada UI HuMob.
-   */
   const displayName =
-    googleMetadata.full_name ??
-    googleMetadata.name ??
+    dashboard.profile?.full_name ??
     dashboard.profile?.username ??
     "Pengguna HuMob";
 
   const avatarUrl =
-    googleMetadata.avatar_url ??
-    googleMetadata.picture ??
-    null;
+    dashboard.profile?.avatar_url ?? null;
 
   const username =
     dashboard.profile?.username ?? null;
-
-  const initials =
-    getInitials(displayName) || "H";
 
   const latestRatingDate =
     dashboard.latestRatingMatch?.match_date ??
@@ -113,20 +92,11 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <section className="flex flex-col justify-between gap-5 rounded-2xl border border-app-border bg-app-surface p-5 sm:flex-row sm:items-center sm:p-6">
         <div className="flex min-w-0 items-center gap-4">
-          {avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt={`Foto profil ${displayName}`}
-              width={64}
-              height={64}
-              priority
-              className="h-16 w-16 shrink-0 rounded-2xl border border-white/10 object-cover"
-            />
-          ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg font-semibold text-white">
-              {initials}
-            </div>
-          )}
+          <ProfileAvatar
+            avatarUrl={avatarUrl}
+            fullName={displayName}
+            size="md"
+          />
 
           <div className="min-w-0">
             <p className="text-sm text-zinc-500">
@@ -149,10 +119,17 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <span className="inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300">
             Akun aktif
           </span>
+
+          <Link
+            href="/dashboard/profile"
+            className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-white/[0.07] hover:text-white"
+          >
+            Lihat Profil
+          </Link>
         </div>
       </section>
 
@@ -192,7 +169,7 @@ export default async function DashboardPage() {
             title="Energy terbaru"
             value={formatScore(
               dashboard.latestRating?.energy_rating ??
-                null,
+              null,
             )}
             description={
               latestRatingDate
@@ -206,7 +183,7 @@ export default async function DashboardPage() {
             title="Focus terbaru"
             value={formatScore(
               dashboard.latestRating?.focus_rating ??
-                null,
+              null,
             )}
             description={
               dashboard.latestRating?.focus_has_data
@@ -485,8 +462,8 @@ export default async function DashboardPage() {
                       <td className="px-3 py-4 font-medium text-white">
                         {rating
                           ? formatScore(
-                              rating.overall_rating,
-                            )
+                            rating.overall_rating,
+                          )
                           : "Belum dinilai"}
                       </td>
                     </tr>
@@ -532,7 +509,7 @@ export default async function DashboardPage() {
                 value={formatClock(
                   dashboard.appConfig
                     ?.daily_match_lock_time ??
-                    null,
+                  null,
                 )}
               />
 

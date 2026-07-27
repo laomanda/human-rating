@@ -2,7 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
   CompleteOnboardingInput,
+  ProfileRpcProfile,
   ProfileRpcResult,
+  UpdateProfileInput,
   UsernameAvailabilityResult,
 } from "@/features/profile/types";
 
@@ -11,8 +13,51 @@ function isRecord(
 ): value is Record<string, unknown> {
   return (
     typeof value === "object" &&
-    value !== null
+    value !== null &&
+    !Array.isArray(value)
   );
+}
+
+function toNullableString(
+  value: unknown,
+): string | null {
+  return typeof value === "string"
+    ? value
+    : null;
+}
+
+function parseRpcProfile(
+  value: unknown,
+): ProfileRpcProfile | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  if (
+    typeof value.id !== "string" ||
+    typeof value.timezone !== "string" ||
+    typeof value.onboarding_completed !==
+      "boolean"
+  ) {
+    return undefined;
+  }
+
+  return {
+    id: value.id,
+    full_name: toNullableString(
+      value.full_name,
+    ),
+    username: toNullableString(
+      value.username,
+    ),
+    bio: toNullableString(value.bio),
+    avatar_url: toNullableString(
+      value.avatar_url,
+    ),
+    timezone: value.timezone,
+    onboarding_completed:
+      value.onboarding_completed,
+  };
 }
 
 function parseUsernameAvailabilityResult(
@@ -36,10 +81,9 @@ function parseUsernameAvailabilityResult(
     code: value.code,
     message: value.message,
     normalized_username:
-      typeof value.normalized_username ===
-      "string"
-        ? value.normalized_username
-        : null,
+      toNullableString(
+        value.normalized_username,
+      ),
   };
 }
 
@@ -53,7 +97,7 @@ function parseProfileRpcResult(
     typeof value.message !== "string"
   ) {
     throw new Error(
-      "Respons onboarding tidak valid.",
+      "Respons perubahan profil tidak valid.",
     );
   }
 
@@ -62,10 +106,12 @@ function parseProfileRpcResult(
     code: value.code,
     message: value.message,
     daily_match_start_date:
-      typeof value.daily_match_start_date ===
-      "string"
-        ? value.daily_match_start_date
-        : null,
+      toNullableString(
+        value.daily_match_start_date,
+      ),
+    profile: parseRpcProfile(
+      value.profile,
+    ),
   };
 }
 
@@ -111,6 +157,29 @@ export async function completeMyOnboarding(
   if (error) {
     throw new Error(
       `Onboarding gagal: ${error.message}`,
+    );
+  }
+
+  return parseProfileRpcResult(data);
+}
+
+export async function updateMyProfile(
+  supabase: SupabaseClient,
+  input: UpdateProfileInput,
+): Promise<ProfileRpcResult> {
+  const { data, error } =
+    await supabase.rpc(
+      "update_my_profile",
+      {
+        p_full_name: input.fullName,
+        p_bio: input.bio,
+        p_avatar_url: input.avatarUrl,
+      },
+    );
+
+  if (error) {
+    throw new Error(
+      `Profil gagal diperbarui: ${error.message}`,
     );
   }
 
