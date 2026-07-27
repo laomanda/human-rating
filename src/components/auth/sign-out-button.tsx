@@ -1,5 +1,5 @@
 import { signOutAction } from "@/app/auth/actions";
-import { SignOutSubmitButton } from "@/components/auth/sign-out-submit-button";
+import { SignOutSubmitButton } from "@/components/auth/sign-out-submit-button.tsx";
 
 export function SignOutButton() {
   return (
