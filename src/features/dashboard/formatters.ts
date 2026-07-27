@@ -1,20 +1,57 @@
-export const DEFAULT_TIME_ZONE = "Asia/Jakarta";
+export const DEFAULT_TIME_ZONE =
+  "Asia/Jakarta";
 
-export function toNullableNumber(value: unknown): number | null {
+const scoreFormatter = new Intl.NumberFormat(
+  "id-ID",
+  {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  },
+);
+
+const STATUS_LABELS: Readonly<
+  Record<string, string>
+> = {
+  open: "Terbuka",
+  locked: "Input ditutup",
+  queued: "Menunggu penilaian",
+  processing: "Sedang dinilai",
+  rated: "Rating tersedia",
+  failed: "Dijadwalkan ulang",
+
+  ai_primary: "Penilaian AI",
+  logic_backup: "Penilaian cadangan",
+  fallback_logic: "Penilaian cadangan",
+  no_activity: "Tanpa aktivitas",
+};
+
+export function toNullableNumber(
+  value: unknown,
+): number | null {
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
+    return Number.isFinite(value)
+      ? value
+      : null;
   }
 
-  if (typeof value === "string" && value.trim() !== "") {
+  if (
+    typeof value === "string" &&
+    value.trim() !== ""
+  ) {
     const parsed = Number(value);
 
-    return Number.isFinite(parsed) ? parsed : null;
+    return Number.isFinite(parsed)
+      ? parsed
+      : null;
   }
 
   return null;
 }
 
-export function toInteger(value: unknown, fallback = 0): number {
+export function toInteger(
+  value: unknown,
+  fallback = 0,
+): number {
   const parsed = toNullableNumber(value);
 
   if (parsed === null) {
@@ -24,18 +61,42 @@ export function toInteger(value: unknown, fallback = 0): number {
   return Math.trunc(parsed);
 }
 
-export function formatScore(value: number | null): string {
-  return value === null ? "—" : value.toFixed(1);
-}
-
-export function formatStatus(value: string | null | undefined): string {
-  if (!value) {
-    return "Unknown";
+export function formatScore(
+  value: number | null,
+): string {
+  if (
+    value === null ||
+    !Number.isFinite(value)
+  ) {
+    return "—";
   }
 
-  return value
+  return scoreFormatter.format(value);
+}
+
+export function formatStatus(
+  value: string | null | undefined,
+): string {
+  if (!value) {
+    return "Tidak diketahui";
+  }
+
+  const normalized = value
+    .trim()
+    .toLowerCase();
+
+  const mappedLabel =
+    STATUS_LABELS[normalized];
+
+  if (mappedLabel) {
+    return mappedLabel;
+  }
+
+  return normalized
     .replaceAll("_", " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase(),
+    );
 }
 
 export function normalizeTimeZone(
@@ -46,7 +107,7 @@ export function normalizeTimeZone(
   }
 
   try {
-    Intl.DateTimeFormat("en-US", {
+    Intl.DateTimeFormat("id-ID", {
       timeZone: value,
     }).format();
 
@@ -60,20 +121,30 @@ export function getDateKeyForTimeZone(
   date: Date,
   timeZone: string,
 ): string {
-  const safeTimeZone = normalizeTimeZone(timeZone);
+  const safeTimeZone =
+    normalizeTimeZone(timeZone);
 
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: safeTimeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
+  const formatter =
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: safeTimeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
 
   const parts = formatter.formatToParts(date);
 
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
+  const year = parts.find(
+    (part) => part.type === "year",
+  )?.value;
+
+  const month = parts.find(
+    (part) => part.type === "month",
+  )?.value;
+
+  const day = parts.find(
+    (part) => part.type === "day",
+  )?.value;
 
   if (!year || !month || !day) {
     return date.toISOString().slice(0, 10);
@@ -82,7 +153,9 @@ export function getDateKeyForTimeZone(
   return `${year}-${month}-${day}`;
 }
 
-export function formatDateOnly(value: string | null): string {
+export function formatDateOnly(
+  value: string | null,
+): string {
   if (!value) {
     return "—";
   }
@@ -95,7 +168,9 @@ export function formatDateOnly(value: string | null): string {
     return value;
   }
 
-  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  const date = new Date(
+    Date.UTC(year, month - 1, day, 12),
+  );
 
   return new Intl.DateTimeFormat("id-ID", {
     timeZone: "UTC",
@@ -126,10 +201,13 @@ export function formatDateTime(
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   }).format(date);
 }
 
-export function formatClock(value: string | null): string {
+export function formatClock(
+  value: string | null,
+): string {
   if (!value) {
     return "—";
   }
@@ -137,11 +215,15 @@ export function formatClock(value: string | null): string {
   return value.slice(0, 5);
 }
 
-export function getInitials(value: string): string {
+export function getInitials(
+  value: string,
+): string {
   return value
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
+    .map((part) =>
+      part.charAt(0).toUpperCase(),
+    )
     .join("");
 }

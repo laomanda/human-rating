@@ -1,20 +1,120 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
-  --foreground: #fafafa;
+  --background: #08090c;
+  --foreground: #f4f4f5;
+
+  --app-sidebar: #0c0d11;
+  --app-surface: #111318;
+  --app-surface-muted: #171a21;
+  --app-border: #252832;
+
+  --muted: #a1a1aa;
+  --muted-foreground: #71717a;
+
+  --focus-ring: #38bdf8;
+
+  --rating-critical: #ef4444;
+  --rating-low: #f97316;
+  --rating-average: #eab308;
+  --rating-good: #22c55e;
+  --rating-excellent: #10b981;
+  --rating-elite: #06b6d4;
+  --rating-perfect: #38bdf8;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-app-sidebar: var(--app-sidebar);
+  --color-app-surface: var(--app-surface);
+  --color-app-surface-muted: var(
+    --app-surface-muted
+  );
+  --color-app-border: var(--app-border);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(
+    --muted-foreground
+  );
+
+  --color-rating-critical: var(
+    --rating-critical
+  );
+  --color-rating-low: var(--rating-low);
+  --color-rating-average: var(
+    --rating-average
+  );
+  --color-rating-good: var(--rating-good);
+  --color-rating-excellent: var(
+    --rating-excellent
+  );
+  --color-rating-elite: var(--rating-elite);
+  --color-rating-perfect: var(
+    --rating-perfect
+  );
+
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--background);
+  color-scheme: dark;
+  scroll-behavior: smooth;
 }
 
 body {
+  min-height: 100%;
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled),
+a[href] {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: rgb(255 255 255 / 14%);
+  color: var(--foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
