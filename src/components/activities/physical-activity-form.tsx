@@ -70,7 +70,7 @@ export function PhysicalActivityForm({
 
     if (!activity) {
       formRef.current?.reset();
-      setActivityType("walking");
+      setTimeout(() => setActivityType("walking"), 0);
     }
 
     onSuccess?.();

@@ -1,64 +1,158 @@
 import { NextResponse } from "next/server";
 
+import { getMyProfile } from "@/features/profile/queries";
+
+import { getSafeInternalPath } from "@/lib/navigation/safe-redirect";
+
 import { createClient } from "@/lib/supabase/server";
 
-function getSafeRedirectPath(value: string | null) {
-  if (!value) {
-    return "/dashboard";
-  }
-
-  if (!value.startsWith("/") || value.startsWith("//")) {
-    return "/dashboard";
-  }
-
-  return value;
+function createRedirectUrl(
+  origin: string,
+  path: string,
+): URL {
+  return new URL(path, origin);
 }
 
-function getApplicationOrigin(request: Request, fallbackOrigin: string) {
-  if (process.env.NODE_ENV === "development") {
-    return fallbackOrigin;
-  }
+export async function GET(
+  request: Request,
+) {
+  const requestUrl =
+    new URL(request.url);
 
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  const forwardedProtocol =
-    request.headers.get("x-forwarded-proto") ?? "https";
+  const code =
+    requestUrl.searchParams.get(
+      "code",
+    );
 
-  if (forwardedHost) {
-    return `${forwardedProtocol}://${forwardedHost}`;
-  }
+  const nextPath =
+    getSafeInternalPath(
+      requestUrl.searchParams.get(
+        "next",
+      ),
+      "/dashboard",
+    );
 
-  return fallbackOrigin;
-}
-
-export async function GET(request: Request) {
-  const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get("code");
-  const next = getSafeRedirectPath(
-    requestUrl.searchParams.get("next"),
-  );
-
-  const applicationOrigin = getApplicationOrigin(
-    request,
-    requestUrl.origin,
-  );
+  const applicationOrigin =
+    requestUrl.origin;
 
   if (!code) {
     return NextResponse.redirect(
-      `${applicationOrigin}/auth/auth-code-error`,
+      createRedirectUrl(
+        applicationOrigin,
+        "/auth/auth-code-error",
+      ),
     );
   }
 
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const {
+    error: exchangeError,
+  } =
+    await supabase.auth
+      .exchangeCodeForSession(code);
 
-  if (error) {
-    console.error("Supabase OAuth code exchange failed:", error.message);
+  if (exchangeError) {
+    console.error(
+      "Supabase OAuth code exchange failed:",
+      exchangeError.message,
+    );
 
     return NextResponse.redirect(
-      `${applicationOrigin}/auth/auth-code-error`,
+      createRedirectUrl(
+        applicationOrigin,
+        "/auth/auth-code-error",
+      ),
     );
   }
 
-  return NextResponse.redirect(`${applicationOrigin}${next}`);
+  const {
+    data: { user },
+    error: userError,
+  } =
+    await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error(
+      "Authenticated user could not be loaded after OAuth callback:",
+      userError?.message ??
+        "User missing",
+    );
+
+    return NextResponse.redirect(
+      createRedirectUrl(
+        applicationOrigin,
+        "/auth/auth-code-error",
+      ),
+    );
+  }
+
+  try {
+    const profile =
+      await getMyProfile(
+        supabase,
+        user.id,
+      );
+
+    if (
+      !profile ||
+      profile.account_status !==
+        "active"
+    ) {
+      return NextResponse.redirect(
+        createRedirectUrl(
+          applicationOrigin,
+          "/auth/auth-code-error",
+        ),
+      );
+    }
+
+    if (
+      !profile.onboarding_completed
+    ) {
+      const onboardingUrl =
+        createRedirectUrl(
+          applicationOrigin,
+          "/onboarding",
+        );
+
+      onboardingUrl.searchParams.set(
+        "next",
+        nextPath,
+      );
+
+      return NextResponse.redirect(
+        onboardingUrl,
+      );
+    }
+
+    const destination =
+      nextPath.startsWith(
+        "/onboarding",
+      )
+        ? "/dashboard"
+        : nextPath;
+
+    return NextResponse.redirect(
+      createRedirectUrl(
+        applicationOrigin,
+        destination,
+      ),
+    );
+  } catch (error) {
+    console.error(
+      "Profile lookup failed after OAuth callback:",
+      error instanceof Error
+        ? error.message
+        : error,
+    );
+
+    return NextResponse.redirect(
+      createRedirectUrl(
+        applicationOrigin,
+        "/auth/auth-code-error",
+      ),
+    );
+  }
 }
