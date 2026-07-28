@@ -31,6 +31,24 @@ type AssessedRow<T> = {
   assessment: EvidenceAssessment;
 };
 
+const COUNTERPRODUCTIVE_FLAG =
+  "counterproductive_activity";
+
+const ACTION_EVIDENCE_PATTERN =
+  /\b(?:belajar|berlatih|evaluasi|follow\s*up|jalan|lari|membaca|membuat|memperbaiki|mempelajari|mengerjakan|mengirim|menulis|menyelesaikan|review)\b/iu;
+
+const COMPLETION_EVIDENCE_PATTERN =
+  /\b(?:diselesaikan|final|follow\s*up|mengirim|menyelesaikan|rampung|selesai|terkirim)\b/iu;
+
+const SPECIFIC_DELIVERABLE_PATTERN =
+  /\b(?:dokumen|hasil|keuangan|laporan|manager|modul|proyek|project|revisi|tim)\b/iu;
+
+const BASIC_CONTEXT_PATTERN =
+  /\b(?:deadline|kuliah|kewajiban|meeting|pekerjaan|tugas)\b/iu;
+
+const NUMERIC_DETAIL_PATTERN =
+  /\b\d+(?:[.,]\d+)?\b/u;
+
 function weightedAverage(
   components: Array<{
     score: number;
@@ -79,6 +97,60 @@ function average(
       0,
     ) / values.length
   );
+}
+
+function evidenceStrength(
+  ...values: Array<
+    string | null | undefined
+  >
+): number {
+  const text = values
+    .filter(Boolean)
+    .join(" ")
+    .normalize("NFKC")
+    .toLowerCase();
+
+  if (!text) {
+    return 0;
+  }
+
+  let strength = 0;
+
+  if (
+    COMPLETION_EVIDENCE_PATTERN.test(
+      text,
+    )
+  ) {
+    strength += 0.35;
+  }
+
+  if (
+    SPECIFIC_DELIVERABLE_PATTERN.test(
+      text,
+    )
+  ) {
+    strength += 0.3;
+  }
+
+  if (
+    BASIC_CONTEXT_PATTERN.test(text)
+  ) {
+    strength += 0.15;
+  }
+
+  if (
+    ACTION_EVIDENCE_PATTERN.test(text)
+  ) {
+    strength += 0.1;
+  }
+
+  if (
+    NUMERIC_DETAIL_PATTERN.test(text)
+  ) {
+    strength += 0.1;
+  }
+
+  return clamp(strength, 0, 1);
 }
 
 function acceptedRows<
@@ -250,27 +322,44 @@ function scoreOtherEvidence(
     return null;
   }
 
-  const qualityScores =
+  const evidenceScores =
     activities.map(
-      ({ assessment }) =>
-        assessment.qualityScore,
+      ({ row, assessment }) => {
+        if (
+          assessment.flags.includes(
+            COUNTERPRODUCTIVE_FLAG,
+          )
+        ) {
+          return 1.5;
+        }
+
+        return (
+          4.0 +
+          assessment.qualityScore *
+            1.4 +
+          evidenceStrength(
+            row.description,
+          ) *
+            2.1
+        );
+      },
     );
 
-  const averageQuality =
-    average(qualityScores);
+  const averageScore =
+    average(evidenceScores);
 
-  const bestQuality =
-    Math.max(...qualityScores);
+  const bestScore =
+    Math.max(...evidenceScores);
 
   /*
-   * Quantity is excluded. The formula only uses
-   * evidence quality.
+   * Quantity is excluded. Counterproductive
+   * evidence is valid history, but it cannot
+   * become positive performance.
    */
   return round1(
     clamp(
-      4.5 +
-      averageQuality * 2.2 +
-      bestQuality * 0.8,
+      averageScore * 0.75 +
+        bestScore * 0.25,
       0,
       7.5,
     ),
@@ -350,10 +439,15 @@ function scoreProductive(
 
   const evidenceScores =
     activities.map(
-      ({ assessment }) =>
-        4.8 +
+      ({ row, assessment }) =>
+        4.2 +
         assessment.qualityScore *
-        4.2,
+          1.8 +
+        evidenceStrength(
+          row.title,
+          row.description,
+        ) *
+          3.0,
     );
 
   const averageScore =
@@ -450,10 +544,16 @@ function responsibilityCompletionRatio(
       row.execution_status
       ];
 
+    const completionStrength =
+      evidenceStrength(
+        row.description,
+      );
+
     const evidenceMultiplier =
-      0.75 +
+      0.45 +
+      completionStrength * 0.4 +
       assessment.qualityScore *
-      0.25;
+        0.15;
 
     weightedScore +=
       executionScore *
@@ -711,7 +811,7 @@ export function calculateLogicScores(
     };
   }
 
-  const energy =
+  const rawEnergy =
     hasData.energy
       ? scoreEnergy(
         input,
@@ -720,6 +820,15 @@ export function calculateLogicScores(
         otherByAttribute.energy,
       )
       : 0;
+
+  const energy =
+    integrity.metrics
+      .timePlausibilityConflict
+      ? Math.min(
+        rawEnergy,
+        6.0,
+      )
+      : rawEnergy;
 
   const rawFocus =
     hasData.focus
@@ -778,8 +887,19 @@ export function calculateLogicScores(
 
   const completionRatio =
     responsibilityResult
-      .completionRatio ??
-    directCoverage;
+      .completionRatio ?? 0;
+
+  const counterproductiveEvidenceCount =
+    [
+      ...integrity.physical,
+      ...integrity.productive,
+      ...integrity.responsibilities,
+      ...integrity.other,
+    ].filter((assessment) =>
+      assessment.flags.includes(
+        COUNTERPRODUCTIVE_FLAG,
+      ),
+    ).length;
 
   const integrityPenalty =
     (
@@ -787,19 +907,30 @@ export function calculateLogicScores(
       integrity.metrics
         .acceptanceRatio
     ) *
-    1.8 +
+    2.0 +
     Math.min(
       integrity.metrics
         .duplicateEvidenceCount *
-      0.25,
+      0.5,
       1,
+    ) +
+    Math.min(
+      counterproductiveEvidenceCount *
+        2.5,
+      4,
     ) +
     (
       integrity.metrics
         .timePlausibilityConflict
-        ? 2.5
+        ? 3.0
         : 0
     );
+
+  const reliableEvidence =
+    integrity.metrics
+      .averageEvidenceQuality *
+    integrity.metrics
+      .acceptanceRatio;
 
   /*
    * Discipline measures clean, reliable execution
@@ -809,16 +940,16 @@ export function calculateLogicScores(
     hasData.discipline
       ? round1(
         clamp(
-          2.0 +
-          directCoverage * 2.2 +
-          integrity.metrics
-            .averageEvidenceQuality *
-          2.5 +
-          completionRatio * 2.0 +
+          1.0 +
+          directCoverage * 1.4 +
+          reliableEvidence * 2.2 +
+          completionRatio * 2.2 +
           integrity.metrics
             .acceptanceRatio *
-          1.3 -
+          0.8 -
           integrityPenalty,
+          0,
+          9.2,
         ),
       )
       : 0;
@@ -924,6 +1055,14 @@ export function calculateLogicScores(
   ) {
     validationFlags.push(
       "time_plausibility_conflict_score_constrained",
+    );
+  }
+
+  if (
+    counterproductiveEvidenceCount > 0
+  ) {
+    validationFlags.push(
+      `counterproductive_evidence_${counterproductiveEvidenceCount}`,
     );
   }
 

@@ -76,6 +76,7 @@ const GENERIC_ACTIVITY_WORDS = new Set([
   "bagus",
   "bekerja",
   "belajar",
+  "disiplin",
   "done",
   "exercise",
   "good",
@@ -105,7 +106,10 @@ const OUTCOME_SIGNAL_PATTERN =
   /\b(?:berhasil|diterima|dikirim|diselesaikan|final|rampung|selesai|tercapai|terkirim)\b/iu;
 
 const SELF_ASSESSMENT_PATTERN =
-  /\b(?:saya|aku)\s+(?:merasa\s+)?(?:sangat\s+)?(?:hebat|luar\s+biasa|maksimal|produktif|sukses)\b/iu;
+  /\b(?:saya|aku)\s+(?:(?:adalah|orang)\s+)?(?:merasa\s+)?(?:sangat\s+)?(?:disiplin|hebat|luar\s+biasa|maksimal|produktif|sukses)\b/iu;
+
+const COUNTERPRODUCTIVE_ACTIVITY_PATTERN =
+  /\b(?:doomscroll|scroll|scrolling|media\s+sosial|sosial\s+media|tiktok|instagram|game|gaming|rebahan|malas|menunda|prokrastinasi)\b/iu;
 
 const TOKEN_PATTERN =
   /[\p{L}\p{N}]+/gu;
@@ -523,6 +527,11 @@ export function analyzeTextQuality(
     !hasOutcomeSignal &&
     !hasNumericDetail;
 
+  const counterproductiveActivity =
+    COUNTERPRODUCTIVE_ACTIVITY_PATTERN.test(
+      normalizedText,
+    );
+
   const lowInformation =
     meaningfulTokens.length < 2 ||
     letterCount < 5 ||
@@ -593,6 +602,12 @@ export function analyzeTextQuality(
     );
   }
 
+  if (counterproductiveActivity) {
+    flags.push(
+      "counterproductive_activity",
+    );
+  }
+
   let qualityScore = 1;
 
   if (lowInformation) {
@@ -659,6 +674,13 @@ export function analyzeTextQuality(
 
   if (promptInjection) {
     qualityScore = 0;
+  }
+
+  if (counterproductiveActivity) {
+    qualityScore = Math.min(
+      qualityScore,
+      0.2,
+    );
   }
 
   qualityScore =

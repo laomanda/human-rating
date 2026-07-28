@@ -5,12 +5,7 @@ import {
 import type {
   CanonicalRatingInput,
   DailyMatchRow,
-  ExistingRatingRow,
-  OtherActivityRow,
-  PhysicalActivityRow,
-  ProductiveActivityRow,
   ProfileRow,
-  ResponsibilityRow,
   ScoringConfigRow,
   SleepEntryRow,
 } from "../types.ts";
@@ -26,7 +21,7 @@ function assert(
 
 function printResult(
   name: string,
-  result: any,
+  result: unknown,
 ) {
   console.log("\n=================");
   console.log(name);
