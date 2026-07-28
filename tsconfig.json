@@ -25,11 +25,12 @@
   },
   "include": [
     "next-env.d.ts",
+    "deno.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "supabase/**"]
+  "exclude": ["node_modules"]
 }

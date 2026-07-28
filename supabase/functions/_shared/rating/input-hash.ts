@@ -1,4 +1,5 @@
 import {
+  INPUT_INTEGRITY_RULESET_VERSION,
   LOGIC_RULESET_VERSION,
 } from "./constants.ts";
 
@@ -29,8 +30,13 @@ export async function createInputHash(
   input: CanonicalRatingInput,
 ): Promise<string> {
   const payload = {
-    rulesetVersion:
-      LOGIC_RULESET_VERSION,
+    rulesetVersions: {
+      logic:
+        LOGIC_RULESET_VERSION,
+
+      integrity:
+        INPUT_INTEGRITY_RULESET_VERSION,
+    },
 
     scoringConfig: {
       id:
@@ -154,7 +160,8 @@ export async function createInputHash(
               .woke_during_sleep,
 
           updatedAt:
-            input.sleepEntry.updated_at,
+            input.sleepEntry
+              .updated_at,
         }
       : null,
 

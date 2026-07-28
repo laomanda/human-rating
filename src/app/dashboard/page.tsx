@@ -27,7 +27,6 @@ import {
   formatScore,
   formatStatus,
   getDateKeyForTimeZone,
-  getInitials,
 } from "@/features/dashboard/formatters";
 
 import { getDashboardData } from "@/features/dashboard/queries";

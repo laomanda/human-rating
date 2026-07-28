@@ -1,11 +1,11 @@
 export const LOGIC_RULESET_VERSION =
-  "humob-logic-v1.0.0";
+  "humob-logic-v2.2.0";
+
+export const INPUT_INTEGRITY_RULESET_VERSION =
+  "humob-integrity-v1.2.0";
 
 /*
  * Primary AI provider.
- *
- * llama-3.3-70b-versatile is being retired,
- * therefore HuMob uses GPT-OSS 120B.
  */
 export const PRIMARY_AI_PROVIDER = "groq";
 
@@ -19,6 +19,8 @@ export const AI_REQUEST_TIMEOUT_MS = 20_000;
 
 export const PRIMARY_AI_MAX_ATTEMPTS = 2;
 export const BACKUP_AI_MAX_ATTEMPTS = 2;
+
+export const AI_MIN_CONFIDENCE = 0.55;
 
 export const PROCESSING_STALE_AFTER_MS =
   10 * 60 * 1000;
@@ -43,10 +45,8 @@ export const FINALIZABLE_MATCH_STATUSES = [
 ] as const;
 
 /*
- * Initial deterministic HuMob ruleset.
- *
- * These constants are versioned through:
- * LOGIC_RULESET_VERSION.
+ * Activity count is intentionally not used as a
+ * direct rating multiplier.
  */
 export const SLEEP_QUALITY_ADJUSTMENT = {
   poor: -2.0,
@@ -72,4 +72,10 @@ export const RESPONSIBILITY_IMPORTANCE_WEIGHT = {
   normal: 1.25,
   important: 1.5,
   very_important: 2.0,
+} as const;
+
+export const TEXT_QUALITY_THRESHOLDS = {
+  minimumAccepted: 0.35,
+  minimumOtherActivity: 0.5,
+  minimumAiEligibleAverage: 0.55,
 } as const;

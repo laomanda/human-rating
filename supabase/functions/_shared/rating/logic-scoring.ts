@@ -6,18 +6,30 @@ import {
   SLEEP_QUALITY_ADJUSTMENT,
 } from "./constants.ts";
 
+import {
+  analyzeInputIntegrity,
+} from "./input-integrity.ts";
+
 import type {
   CanonicalRatingInput,
   DimensionMap,
+  EvidenceAssessment,
   LogicScoreResult,
+  OtherActivityRow,
+  PhysicalActivityRow,
+  ProductiveActivityRow,
   ResponsibilityRow,
 } from "./types.ts";
 
 import {
   clamp,
   round1,
-  uniqueBySignature,
 } from "./utils.ts";
+
+type AssessedRow<T> = {
+  row: T;
+  assessment: EvidenceAssessment;
+};
 
 function weightedAverage(
   components: Array<{
@@ -34,21 +46,74 @@ function weightedAverage(
     return 0;
   }
 
-  const weightedTotal = valid.reduce(
-    (total, component) =>
-      total +
-      component.score *
+  const weightedTotal =
+    valid.reduce(
+      (total, component) =>
+        total +
+        component.score *
         component.weight,
-    0,
-  );
+      0,
+    );
 
-  const totalWeight = valid.reduce(
-    (total, component) =>
-      total + component.weight,
-    0,
-  );
+  const totalWeight =
+    valid.reduce(
+      (total, component) =>
+        total + component.weight,
+      0,
+    );
 
   return weightedTotal / totalWeight;
+}
+
+function average(
+  values: number[],
+): number {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  return (
+    values.reduce(
+      (total, value) =>
+        total + value,
+      0,
+    ) / values.length
+  );
+}
+
+function acceptedRows<
+  T extends {
+    id: string;
+  },
+>(
+  rows: T[],
+  assessments: EvidenceAssessment[],
+): AssessedRow<T>[] {
+  const assessmentById =
+    new Map(
+      assessments.map(
+        (assessment) => [
+          assessment.id,
+          assessment,
+        ],
+      ),
+    );
+
+  return rows.flatMap((row) => {
+    const assessment =
+      assessmentById.get(row.id);
+
+    if (!assessment?.accepted) {
+      return [];
+    }
+
+    return [
+      {
+        row,
+        assessment,
+      },
+    ];
+  });
 }
 
 /* ============================================================
@@ -58,10 +123,15 @@ function weightedAverage(
 
 function scoreSleep(
   input: CanonicalRatingInput,
+  sleepAccepted: boolean,
 ): number | null {
-  const sleepEntry = input.sleepEntry;
+  const sleepEntry =
+    input.sleepEntry;
 
-  if (!sleepEntry) {
+  if (
+    !sleepEntry ||
+    !sleepAccepted
+  ) {
     return null;
   }
 
@@ -114,7 +184,7 @@ function scoreSleep(
 
   const qualityAdjustment =
     SLEEP_QUALITY_ADJUSTMENT[
-      sleepEntry.quality
+    sleepEntry.quality
     ];
 
   const interruptionPenalty =
@@ -125,61 +195,82 @@ function scoreSleep(
   return round1(
     clamp(
       durationScore +
-        qualityAdjustment -
-        interruptionPenalty,
+      qualityAdjustment -
+      interruptionPenalty,
     ),
   );
 }
 
 function scorePhysical(
-  input: CanonicalRatingInput,
+  activities: Array<
+    AssessedRow<PhysicalActivityRow>
+  >,
 ): number | null {
-  const uniqueActivities =
-    uniqueBySignature(
-      input.physicalActivities,
-    );
-
-  if (uniqueActivities.length === 0) {
+  if (activities.length === 0) {
     return null;
   }
 
-  const averageIntensity =
-    uniqueActivities.reduce(
-      (total, activity) =>
-        total +
-        PHYSICAL_INTENSITY_SCORE[
-          activity.intensity
-        ],
-      0,
-    ) / uniqueActivities.length;
+  const scores =
+    activities.map(
+      ({
+        row,
+        assessment,
+      }) => {
+        const intensityScore =
+          PHYSICAL_INTENSITY_SCORE[
+          row.intensity
+          ];
 
-  const breadthBonus = Math.min(
-    Math.max(
-      uniqueActivities.length - 1,
-      0,
-    ) * 0.35,
-    1.0,
-  );
+        /*
+         * No breadth or quantity bonus.
+         */
+        const qualityMultiplier =
+          0.85 +
+          assessment.qualityScore *
+          0.15;
+
+        return (
+          intensityScore *
+          qualityMultiplier
+        );
+      },
+    );
 
   return round1(
-    clamp(
-      averageIntensity +
-        breadthBonus,
-    ),
+    clamp(average(scores)),
   );
 }
 
 function scoreOtherEvidence(
-  count: number,
+  activities: Array<
+    AssessedRow<OtherActivityRow>
+  >,
 ): number | null {
-  if (count === 0) {
+  if (activities.length === 0) {
     return null;
   }
 
+  const qualityScores =
+    activities.map(
+      ({ assessment }) =>
+        assessment.qualityScore,
+    );
+
+  const averageQuality =
+    average(qualityScores);
+
+  const bestQuality =
+    Math.max(...qualityScores);
+
+  /*
+   * Quantity is excluded. The formula only uses
+   * evidence quality.
+   */
   return round1(
     clamp(
-      5.5 +
-        Math.min(count, 4) * 0.5,
+      4.5 +
+      averageQuality * 2.2 +
+      bestQuality * 0.8,
       0,
       7.5,
     ),
@@ -188,22 +279,34 @@ function scoreOtherEvidence(
 
 function scoreEnergy(
   input: CanonicalRatingInput,
-  otherCount: number,
+  sleepAccepted: boolean,
+
+  physical: Array<
+    AssessedRow<PhysicalActivityRow>
+  >,
+
+  other: Array<
+    AssessedRow<OtherActivityRow>
+  >,
 ): number {
   const sleepScore =
-    scoreSleep(input);
+    scoreSleep(
+      input,
+      sleepAccepted,
+    );
 
   const physicalScore =
-    scorePhysical(input);
+    scorePhysical(physical);
 
   const otherScore =
-    scoreOtherEvidence(otherCount);
+    scoreOtherEvidence(other);
 
   return round1(
     clamp(
       weightedAverage([
         {
           score: sleepScore ?? 0,
+
           weight:
             sleepScore === null
               ? 0
@@ -212,6 +315,7 @@ function scoreEnergy(
         {
           score:
             physicalScore ?? 0,
+
           weight:
             physicalScore === null
               ? 0
@@ -219,6 +323,7 @@ function scoreEnergy(
         },
         {
           score: otherScore ?? 0,
+
           weight:
             otherScore === null
               ? 0
@@ -235,48 +340,55 @@ function scoreEnergy(
  */
 
 function scoreProductive(
-  input: CanonicalRatingInput,
+  activities: Array<
+    AssessedRow<ProductiveActivityRow>
+  >,
 ): number | null {
-  const uniqueActivities =
-    uniqueBySignature(
-      input.productiveActivities,
-    );
-
-  if (uniqueActivities.length === 0) {
+  if (activities.length === 0) {
     return null;
   }
 
-  const count =
-    uniqueActivities.length;
+  const evidenceScores =
+    activities.map(
+      ({ assessment }) =>
+        4.8 +
+        assessment.qualityScore *
+        4.2,
+    );
 
-  if (count === 1) {
-    return 6.2;
-  }
+  const averageScore =
+    average(evidenceScores);
 
-  if (count === 2) {
-    return 7.4;
-  }
+  const bestScore =
+    Math.max(...evidenceScores);
 
-  if (count === 3) {
-    return 8.3;
-  }
-
-  if (count === 4) {
-    return 9.0;
-  }
-
-  return 9.4;
+  /*
+   * One high-quality activity can score well.
+   * Many low-quality activities cannot inflate
+   * the result because count is absent.
+   */
+  return round1(
+    clamp(
+      averageScore * 0.7 +
+      bestScore * 0.3,
+    ),
+  );
 }
 
 function scoreFocus(
-  input: CanonicalRatingInput,
-  otherCount: number,
+  productive: Array<
+    AssessedRow<ProductiveActivityRow>
+  >,
+
+  other: Array<
+    AssessedRow<OtherActivityRow>
+  >,
 ): number {
   const productiveScore =
-    scoreProductive(input);
+    scoreProductive(productive);
 
   const otherScore =
-    scoreOtherEvidence(otherCount);
+    scoreOtherEvidence(other);
 
   return round1(
     clamp(
@@ -291,8 +403,7 @@ function scoreFocus(
               : 0.9,
         },
         {
-          score:
-            otherScore ?? 0,
+          score: otherScore ?? 0,
 
           weight:
             otherScore === null
@@ -310,15 +421,12 @@ function scoreFocus(
  */
 
 function responsibilityCompletionRatio(
-  responsibilities: ResponsibilityRow[],
+  responsibilities: Array<
+    AssessedRow<ResponsibilityRow>
+  >,
 ): number | null {
-  const uniqueResponsibilities =
-    uniqueBySignature(
-      responsibilities,
-    );
-
   if (
-    uniqueResponsibilities.length === 0
+    responsibilities.length === 0
   ) {
     return null;
   }
@@ -327,24 +435,33 @@ function responsibilityCompletionRatio(
   let totalWeight = 0;
 
   for (
-    const responsibility of
-    uniqueResponsibilities
+    const {
+      row,
+      assessment,
+    } of responsibilities
   ) {
     const importanceWeight =
       RESPONSIBILITY_IMPORTANCE_WEIGHT[
-        responsibility.importance
+      row.importance
       ];
 
     const executionScore =
       RESPONSIBILITY_EXECUTION_SCORE[
-        responsibility.execution_status
+      row.execution_status
       ];
+
+    const evidenceMultiplier =
+      0.75 +
+      assessment.qualityScore *
+      0.25;
 
     weightedScore +=
       executionScore *
+      evidenceMultiplier *
       importanceWeight;
 
-    totalWeight += importanceWeight;
+    totalWeight +=
+      importanceWeight;
   }
 
   if (totalWeight === 0) {
@@ -354,21 +471,26 @@ function responsibilityCompletionRatio(
   return (
     clamp(
       weightedScore /
-        totalWeight,
+      totalWeight,
     ) / 10
   );
 }
 
 function scoreResponsibility(
-  input: CanonicalRatingInput,
-  otherCount: number,
+  responsibilities: Array<
+    AssessedRow<ResponsibilityRow>
+  >,
+
+  other: Array<
+    AssessedRow<OtherActivityRow>
+  >,
 ): {
   score: number;
   completionRatio: number | null;
 } {
   const completionRatio =
     responsibilityCompletionRatio(
-      input.responsibilities,
+      responsibilities,
     );
 
   const responsibilityScore =
@@ -377,7 +499,7 @@ function scoreResponsibility(
       : completionRatio * 10;
 
   const otherScore =
-    scoreOtherEvidence(otherCount);
+    scoreOtherEvidence(other);
 
   return {
     score: round1(
@@ -390,7 +512,7 @@ function scoreResponsibility(
 
             weight:
               responsibilityScore ===
-              null
+                null
                 ? 0
                 : 0.9,
           },
@@ -412,7 +534,7 @@ function scoreResponsibility(
 }
 
 /* ============================================================
- * PERSONAL BASELINE BLEND
+ * PERSONAL BASELINE
  * ============================================================
  */
 
@@ -425,109 +547,105 @@ function blendWithBaseline(
   return round1(
     clamp(
       universal *
-        universalWeight +
-        baseline *
-          personalWeight,
+      universalWeight +
+      baseline *
+      personalWeight,
     ),
   );
 }
 
 /* ============================================================
- * MAIN LOGIC SCORE
+ * MAIN
  * ============================================================
  */
 
 export function calculateLogicScores(
   input: CanonicalRatingInput,
 ): LogicScoreResult {
-  const uniquePhysical =
-    uniqueBySignature(
+  const integrity =
+    analyzeInputIntegrity(input);
+
+  const physical =
+    acceptedRows(
       input.physicalActivities,
+      integrity.physical,
     );
 
-  const uniqueProductive =
-    uniqueBySignature(
+  const productive =
+    acceptedRows(
       input.productiveActivities,
+      integrity.productive,
     );
 
-  const uniqueResponsibilities =
-    uniqueBySignature(
+  const responsibilities =
+    acceptedRows(
       input.responsibilities,
+      integrity.responsibilities,
     );
 
-  const uniqueOther =
-    uniqueBySignature(
+  const other =
+    acceptedRows(
       input.otherActivities,
+      integrity.other,
     );
 
-  const otherCounts = {
-    energy: uniqueOther.filter(
-      (activity) =>
-        activity.classified_attribute ===
+  const otherByAttribute = {
+    energy: other.filter(
+      ({ row }) =>
+        row.classified_attribute ===
         "energy",
-    ).length,
+    ),
 
-    focus: uniqueOther.filter(
-      (activity) =>
-        activity.classified_attribute ===
+    focus: other.filter(
+      ({ row }) =>
+        row.classified_attribute ===
         "focus",
-    ).length,
+    ),
 
-    discipline: uniqueOther.filter(
-      (activity) =>
-        activity.classified_attribute ===
+    discipline: other.filter(
+      ({ row }) =>
+        row.classified_attribute ===
         "discipline",
-    ).length,
+    ),
 
-    responsibility:
-      uniqueOther.filter(
-        (activity) =>
-          activity.classified_attribute ===
-          "responsibility",
-      ).length,
+    responsibility: other.filter(
+      ({ row }) =>
+        row.classified_attribute ===
+        "responsibility",
+    ),
   };
-
-  const rawInputCount =
-    (input.sleepEntry ? 1 : 0) +
-    input.physicalActivities.length +
-    input.productiveActivities.length +
-    input.responsibilities.length +
-    input.otherActivities.length;
-
-  const uniqueEvidenceCount =
-    (input.sleepEntry ? 1 : 0) +
-    uniquePhysical.length +
-    uniqueProductive.length +
-    uniqueResponsibilities.length +
-    uniqueOther.length;
 
   const hasData = {
     energy:
-      Boolean(input.sleepEntry) ||
-      uniquePhysical.length > 0 ||
-      otherCounts.energy > 0,
+      integrity.sleepAccepted ||
+      physical.length > 0 ||
+      otherByAttribute.energy
+        .length > 0,
 
     focus:
-      uniqueProductive.length > 0 ||
-      otherCounts.focus > 0,
+      productive.length > 0 ||
+      otherByAttribute.focus
+        .length > 0,
 
     discipline:
-      uniqueEvidenceCount > 0,
+      integrity.metrics
+        .acceptedEvidenceCount > 0,
 
     responsibility:
-      uniqueResponsibilities.length >
-        0 ||
-      otherCounts.responsibility > 0,
+      responsibilities.length > 0 ||
+      otherByAttribute
+        .responsibility.length > 0,
   };
 
   const validationFlags: string[] = [
     LOGIC_RULESET_VERSION,
+    ...integrity.validationFlags,
   ];
 
   if (
     input.dailyMatch
       .input_item_count !==
-    rawInputCount
+    integrity.metrics.rawInputCount
   ) {
     validationFlags.push(
       "daily_match_input_count_mismatch",
@@ -535,15 +653,11 @@ export function calculateLogicScores(
   }
 
   if (
-    rawInputCount !==
-    uniqueEvidenceCount
+    integrity.metrics.rawInputCount ===
+    0 ||
+    integrity.metrics
+      .acceptedEvidenceCount === 0
   ) {
-    validationFlags.push(
-      "duplicate_signatures_deduplicated_for_scoring",
-    );
-  }
-
-  if (rawInputCount === 0) {
     return {
       hasData,
 
@@ -564,9 +678,14 @@ export function calculateLogicScores(
         responsibility: 0,
       },
 
+      integrity,
+
       metrics: {
-        rawInputCount: 0,
-        uniqueEvidenceCount: 0,
+        ...integrity.metrics,
+
+        uniqueEvidenceCount:
+          integrity.metrics
+            .acceptedEvidenceCount,
 
         energyEvidenceCount: 0,
         focusEvidenceCount: 0,
@@ -583,43 +702,73 @@ export function calculateLogicScores(
 
       validationFlags: [
         ...validationFlags,
-        "no_activity",
+
+        integrity.metrics
+          .rawInputCount === 0
+          ? "no_activity"
+          : "no_valid_activity",
       ],
     };
   }
 
-  const energy = hasData.energy
-    ? scoreEnergy(
+  const energy =
+    hasData.energy
+      ? scoreEnergy(
         input,
-        otherCounts.energy,
+        integrity.sleepAccepted,
+        physical,
+        otherByAttribute.energy,
       )
-    : 0;
+      : 0;
 
-  const focus = hasData.focus
-    ? scoreFocus(
-        input,
-        otherCounts.focus,
+  const rawFocus =
+    hasData.focus
+      ? scoreFocus(
+        productive,
+        otherByAttribute.focus,
       )
-    : 0;
+      : 0;
 
-  const responsibilityResult =
+  const rawResponsibilityResult =
     hasData.responsibility
       ? scoreResponsibility(
-          input,
-          otherCounts.responsibility,
-        )
+        responsibilities,
+        otherByAttribute
+          .responsibility,
+      )
       : {
-          score: 0,
-          completionRatio: null,
-        };
+        score: 0,
+        completionRatio: null,
+      };
 
   /*
-   * Discipline is synthesized from:
-   * - coverage of primary dimensions
-   * - amount of unique evidence
-   * - responsibility completion
-   * - explicitly classified discipline evidence
+   * Konflik durasi tidak membuktikan user berbohong.
+   * Namun data tersebut tidak cukup konsisten untuk
+   * mendukung rating tinggi atau adjustment AI.
    */
+  const focus =
+    integrity.metrics
+      .timePlausibilityConflict
+      ? Math.min(
+        rawFocus,
+        6.0,
+      )
+      : rawFocus;
+
+  const responsibilityResult =
+    integrity.metrics
+      .timePlausibilityConflict
+      ? {
+        ...rawResponsibilityResult,
+
+        score: Math.min(
+          rawResponsibilityResult
+            .score,
+          6.0,
+        ),
+      }
+      : rawResponsibilityResult;
+
   const directCoverage =
     [
       hasData.energy,
@@ -627,41 +776,55 @@ export function calculateLogicScores(
       hasData.responsibility,
     ].filter(Boolean).length / 3;
 
-  const consistencyRatio =
-    Math.min(
-      uniqueEvidenceCount / 5,
-      1,
-    );
-
   const completionRatio =
     responsibilityResult
       .completionRatio ??
     directCoverage;
 
-  const disciplineEvidenceBonus =
+  const integrityPenalty =
+    (
+      1 -
+      integrity.metrics
+        .acceptanceRatio
+    ) *
+    1.8 +
     Math.min(
-      otherCounts.discipline *
-        0.3,
-      0.6,
+      integrity.metrics
+        .duplicateEvidenceCount *
+      0.25,
+      1,
+    ) +
+    (
+      integrity.metrics
+        .timePlausibilityConflict
+        ? 2.5
+        : 0
     );
 
+  /*
+   * Discipline measures clean, reliable execution
+   * and coverage. It does not reward raw quantity.
+   */
   const discipline =
     hasData.discipline
       ? round1(
-          clamp(
-            3.0 +
-              directCoverage *
-                3.0 +
-              consistencyRatio *
-                2.0 +
-              completionRatio *
-                2.0 +
-              disciplineEvidenceBonus,
-          ),
-        )
+        clamp(
+          2.0 +
+          directCoverage * 2.2 +
+          integrity.metrics
+            .averageEvidenceQuality *
+          2.5 +
+          completionRatio * 2.0 +
+          integrity.metrics
+            .acceptanceRatio *
+          1.3 -
+          integrityPenalty,
+        ),
+      )
       : 0;
 
-  const universal: DimensionMap = {
+  const universal:
+    DimensionMap = {
     energy,
     focus,
     discipline,
@@ -672,16 +835,16 @@ export function calculateLogicScores(
 
   const baselineReady = Boolean(
     input.baseline &&
-      input.baseline
-        .calibration_match_count >= 7 &&
-      input.baseline
-        .calibration_completed_at,
+    input.baseline
+      .calibration_match_count >= 7 &&
+    input.baseline
+      .calibration_completed_at,
   );
 
   const baseline:
-    | DimensionMap
-    | null = baselineReady
-    ? {
+    DimensionMap | null =
+    baselineReady
+      ? {
         energy:
           input.baseline!
             .energy_baseline,
@@ -698,51 +861,54 @@ export function calculateLogicScores(
           input.baseline!
             .responsibility_baseline,
       }
-    : null;
+      : null;
 
   const config =
     input.scoringConfig;
 
   const logic: DimensionMap = {
     energy:
-      hasData.energy && baseline
+      hasData.energy &&
+        baseline
         ? blendWithBaseline(
-            universal.energy,
-            baseline.energy,
-            config.universal_weight,
-            config.personal_weight,
-          )
+          universal.energy,
+          baseline.energy,
+          config.universal_weight,
+          config.personal_weight,
+        )
         : universal.energy,
 
     focus:
-      hasData.focus && baseline
+      hasData.focus &&
+        baseline
         ? blendWithBaseline(
-            universal.focus,
-            baseline.focus,
-            config.universal_weight,
-            config.personal_weight,
-          )
+          universal.focus,
+          baseline.focus,
+          config.universal_weight,
+          config.personal_weight,
+        )
         : universal.focus,
 
     discipline:
-      hasData.discipline && baseline
+      hasData.discipline &&
+        baseline
         ? blendWithBaseline(
-            universal.discipline,
-            baseline.discipline,
-            config.universal_weight,
-            config.personal_weight,
-          )
+          universal.discipline,
+          baseline.discipline,
+          config.universal_weight,
+          config.personal_weight,
+        )
         : universal.discipline,
 
     responsibility:
       hasData.responsibility &&
-      baseline
+        baseline
         ? blendWithBaseline(
-            universal.responsibility,
-            baseline.responsibility,
-            config.universal_weight,
-            config.personal_weight,
-          )
+          universal.responsibility,
+          baseline.responsibility,
+          config.universal_weight,
+          config.personal_weight,
+        )
         : universal.responsibility,
   };
 
@@ -752,36 +918,57 @@ export function calculateLogicScores(
       : "universal_only_uncalibrated",
   );
 
+  if (
+    integrity.metrics
+      .timePlausibilityConflict
+  ) {
+    validationFlags.push(
+      "time_plausibility_conflict_score_constrained",
+    );
+  }
+
+  validationFlags.push(
+    "activity_quantity_not_used_as_direct_score_multiplier",
+  );
+
   return {
     hasData,
     universal,
-
-    baselineApplied:
-      baselineReady,
-
+    baselineApplied: baselineReady,
     baseline,
     logic,
+    integrity,
 
     metrics: {
-      rawInputCount,
-      uniqueEvidenceCount,
+      ...integrity.metrics,
+
+      uniqueEvidenceCount:
+        integrity.metrics
+          .acceptedEvidenceCount,
 
       energyEvidenceCount:
-        (input.sleepEntry ? 1 : 0) +
-        uniquePhysical.length +
-        otherCounts.energy,
+        (
+          integrity.sleepAccepted
+            ? 1
+            : 0
+        ) +
+        physical.length +
+        otherByAttribute.energy
+          .length,
 
       focusEvidenceCount:
-        uniqueProductive.length +
-        otherCounts.focus,
+        productive.length +
+        otherByAttribute.focus
+          .length,
 
       disciplineEvidenceCount:
-        uniqueEvidenceCount +
-        otherCounts.discipline,
+        integrity.metrics
+          .acceptedEvidenceCount,
 
       responsibilityEvidenceCount:
-        uniqueResponsibilities.length +
-        otherCounts.responsibility,
+        responsibilities.length +
+        otherByAttribute
+          .responsibility.length,
 
       responsibilityCompletionRatio:
         responsibilityResult

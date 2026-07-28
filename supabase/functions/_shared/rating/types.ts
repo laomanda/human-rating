@@ -261,6 +261,67 @@ export type CanonicalRatingInput = {
 };
 
 /* ============================================================
+ * INPUT INTEGRITY
+ * ============================================================
+ */
+
+export type EvidenceKind =
+  | "sleep"
+  | "physical"
+  | "productive"
+  | "responsibility"
+  | "other";
+
+export type TextQualityAssessment = {
+  accepted: boolean;
+  normalizedText: string;
+  qualityScore: number;
+  tokenCount: number;
+  meaningfulTokenCount: number;
+  flags: string[];
+};
+
+export type EvidenceAssessment = {
+  id: string;
+
+  kind: Exclude<
+    EvidenceKind,
+    "sleep"
+  >;
+
+  accepted: boolean;
+  qualityScore: number;
+  flags: string[];
+};
+
+export type InputIntegrityMetrics = {
+  rawInputCount: number;
+  acceptedEvidenceCount: number;
+  rejectedEvidenceCount: number;
+  duplicateEvidenceCount: number;
+  meaningfulTextEvidenceCount: number;
+
+  averageEvidenceQuality: number;
+  acceptanceRatio: number;
+
+  claimedDurationMinutes: number;
+  timePlausibilityConflict: boolean;
+};
+
+export type InputIntegrityResult = {
+  sleepAccepted: boolean;
+
+  physical: EvidenceAssessment[];
+  productive: EvidenceAssessment[];
+  responsibilities: EvidenceAssessment[];
+  other: EvidenceAssessment[];
+
+  metrics: InputIntegrityMetrics;
+  aiEligible: boolean;
+  validationFlags: string[];
+};
+
+/* ============================================================
  * RATING TYPES
  * ============================================================
  */
@@ -279,21 +340,21 @@ export type DimensionAvailability = {
   responsibility: boolean;
 };
 
-export type LogicScoreMetrics = {
-  rawInputCount: number;
-  uniqueEvidenceCount: number;
+export type LogicScoreMetrics =
+  InputIntegrityMetrics & {
+    uniqueEvidenceCount: number;
 
-  energyEvidenceCount: number;
-  focusEvidenceCount: number;
-  disciplineEvidenceCount: number;
-  responsibilityEvidenceCount: number;
+    energyEvidenceCount: number;
+    focusEvidenceCount: number;
+    disciplineEvidenceCount: number;
+    responsibilityEvidenceCount: number;
 
-  responsibilityCompletionRatio:
-    | number
-    | null;
+    responsibilityCompletionRatio:
+      | number
+      | null;
 
-  databaseInputCount: number;
-};
+    databaseInputCount: number;
+  };
 
 export type LogicScoreResult = {
   hasData: DimensionAvailability;
@@ -305,6 +366,7 @@ export type LogicScoreResult = {
 
   logic: DimensionMap;
 
+  integrity: InputIntegrityResult;
   metrics: LogicScoreMetrics;
   validationFlags: string[];
 };
@@ -314,10 +376,10 @@ export type LogicScoreResult = {
  * ============================================================
  */
 
-export type AiSuggestedRatings =
-  DimensionMap & {
-    overall: number;
-  };
+export type AiSuggestedAdjustments = {
+  adjustments: DimensionMap;
+  confidence: number;
+};
 
 export type AiProviderResult = {
   source:
@@ -327,7 +389,8 @@ export type AiProviderResult = {
   provider: string;
   model: string;
 
-  suggestedRatings: AiSuggestedRatings;
+  suggestedAdjustments: DimensionMap;
+  confidence: number;
   validationFlags: string[];
 };
 

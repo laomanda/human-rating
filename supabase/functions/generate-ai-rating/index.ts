@@ -109,22 +109,21 @@ function weightedOverall(
 }
 
 function boundedAdjustment(
-  difference: number,
+  value: number,
   maximum: number,
 ): number {
-  const limited =
-    clamp(
-      difference,
-      -maximum,
-      maximum,
-    );
+  const limited = clamp(
+    value,
+    -maximum,
+    maximum,
+  );
 
   const rounded =
     round1(limited);
 
   /*
-   * Defensively prevent decimal rounding
-   * from exceeding a non-standard limit.
+   * Prevent one-decimal rounding from exceeding
+   * a non-standard config limit.
    */
   if (
     Math.abs(rounded) <=
@@ -148,8 +147,13 @@ function calculateFinalRating(
   logic: LogicScoreResult,
   aiResult: AiProviderRunResult,
 ): FinalRatingResult {
+  /*
+   * Random or rejected inputs are not considered
+   * valid activity.
+   */
   if (
-    logic.metrics.rawInputCount === 0
+    logic.metrics
+      .acceptedEvidenceCount === 0
   ) {
     return {
       source: "no_activity",
@@ -167,7 +171,12 @@ function calculateFinalRating(
 
       validationFlags: [
         ...logic.validationFlags,
-        "ai_skipped_no_activity",
+        ...aiResult.validationFlags,
+
+        logic.metrics.rawInputCount ===
+          0
+          ? "ai_skipped_no_activity"
+          : "ai_skipped_no_valid_activity",
       ],
     };
   }
@@ -231,34 +240,32 @@ function calculateFinalRating(
     if (!logic.hasData[key]) {
       adjustments[key] = 0;
       ratings[key] = 0;
-
       continue;
     }
 
-    const rawDifference =
+    const requestedAdjustment =
       providerResult
-        .suggestedRatings[key] -
-      logic.logic[key];
+        .suggestedAdjustments[key];
 
-    const limitedDifference =
+    const limitedAdjustment =
       boundedAdjustment(
-        rawDifference,
+        requestedAdjustment,
         maximum,
       );
 
     if (
       Math.abs(
-        rawDifference -
-          limitedDifference,
+        requestedAdjustment -
+          limitedAdjustment,
       ) > 0.0001
     ) {
       adjustmentFlags.push(
-        `ai_${key}_difference_capped`,
+        `ai_${key}_adjustment_backend_capped`,
       );
     }
 
     adjustments[key] =
-      limitedDifference;
+      limitedAdjustment;
 
     ratings[key] = round1(
       clamp(
@@ -269,31 +276,13 @@ function calculateFinalRating(
   }
 
   /*
-   * AI overall is audit-only.
-   * Canonical overall is always recalculated
-   * from final dimensions and DB config weights.
+   * AI never calculates Overall.
    */
   const overall =
     weightedOverall(
       input,
       ratings,
     );
-
-  if (
-    Math.abs(
-      providerResult
-        .suggestedRatings.overall -
-        overall,
-    ) > maximum
-  ) {
-    adjustmentFlags.push(
-      "ai_overall_not_used_outside_weighted_result",
-    );
-  } else {
-    adjustmentFlags.push(
-      "ai_overall_audit_within_tolerance",
-    );
-  }
 
   return {
     source:
@@ -312,10 +301,18 @@ function calculateFinalRating(
     validationFlags: [
       ...logic.validationFlags,
       ...aiResult.validationFlags,
+
       ...providerResult
         .validationFlags,
+
       ...adjustmentFlags,
-      "ai_rating_constrained_by_logic",
+
+      "ai_adjustments_constrained_by_logic",
+
+      `ai_confidence_${Math.round(
+        providerResult.confidence *
+          100,
+      )}`,
     ],
   };
 }
@@ -326,7 +323,8 @@ async function parseRequest(
   let body: unknown;
 
   try {
-    body = await request.json();
+    body =
+      await request.json();
   } catch {
     throw new HttpError(
       400,
@@ -370,6 +368,7 @@ async function parseRequest(
     throw new HttpError(
       400,
       "UNKNOWN_BODY_FIELDS",
+
       `Unknown request field(s): ${extraKeys.join(
         ", ",
       )}.`,
@@ -521,7 +520,7 @@ Deno.serve(
       );
 
       /*
-       * Idempotent finalization.
+       * Finalization remains idempotent.
        */
       if (
         body.action ===
@@ -563,17 +562,14 @@ Deno.serve(
       }
 
       /*
-       * Only the internal rating job can
-       * execute AI.
-       *
-       * User preview is logic-only.
+       * Only the internal job may call AI.
+       * User previews remain deterministic.
        */
       const canUseAi =
         auth.kind === "job";
 
       const shouldUseAi =
-        logic.metrics
-          .rawInputCount > 0 &&
+        logic.integrity.aiEligible &&
         canUseAi &&
         (
           body.action ===
@@ -594,7 +590,12 @@ Deno.serve(
               validationFlags: [
                 auth.kind === "user"
                   ? "ai_skipped_user_preview"
-                  : "ai_skipped_by_request",
+
+                  : !logic.integrity
+                        .aiEligible
+                    ? "ai_skipped_input_not_eligible"
+
+                    : "ai_skipped_by_request",
               ],
             };
 
@@ -643,8 +644,8 @@ Deno.serve(
 
       /*
        * after_daily_rating_change()
-       * changes the match to rated and
-       * recomputes stats/baseline.
+       * marks the match rated and recalculates
+       * statistics and baselines.
        */
       claimedDailyMatchId =
         null;

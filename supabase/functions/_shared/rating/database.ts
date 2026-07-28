@@ -486,9 +486,12 @@ export async function insertFinalRating(
     discipline_rating:
       final.ratings.discipline,
 
-    responsibility_rating:
+        responsibility_rating:
       final.ratings
         .responsibility,
+
+    overall_rating:
+      final.overall,
 
     source:
       final.source,
