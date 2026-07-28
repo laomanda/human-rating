@@ -1,6 +1,4 @@
-import {
-  createClient,
-} from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 import {
   FINALIZABLE_MATCH_STATUSES,
@@ -16,100 +14,166 @@ import type {
   RequestAuth,
 } from "./types.ts";
 
-import {
-  HttpError,
-  timingSafeEqual,
-} from "./utils.ts";
+import { HttpError, timingSafeEqual } from "./utils.ts";
 
-function readSecretKey():
-  | string
+type AdminCredentialKind =
+  | "secret_key"
+  | "secret_dictionary"
+  | "legacy_service_role";
+
+type AdminCredential = {
+  kind: AdminCredentialKind;
+  value: string;
+};
+
+export type EnvironmentReader = (
+  name: string,
+) => string | undefined;
+
+function readNonEmptySecret(
+  value: string | undefined,
+): string | null {
+  const normalized = value?.trim() ?? "";
+
+  return normalized === "" ? null : normalized;
+}
+
+function readSecretDictionary(
+  readEnv: EnvironmentReader,
+):
+  | AdminCredential
   | null {
-  /*
-   * Prefer the legacy service-role JWT when Supabase
-   * provides it. It is known to preserve BYPASSRLS
-   * semantics for PostgREST admin queries.
-   */
-  const serviceRoleKey =
-    Deno.env.get(
-      "SUPABASE_SERVICE_ROLE_KEY",
-    );
+  const secretDictionary = readNonEmptySecret(
+    readEnv(
+      "SUPABASE_SECRET_KEYS",
+    ),
+  );
 
-  if (serviceRoleKey) {
-    return serviceRoleKey;
+  if (!secretDictionary) {
+    return null;
   }
 
-  const directSecret =
-    Deno.env.get(
-      "SUPABASE_SECRET_KEY",
+  try {
+    const parsed = JSON.parse(
+      secretDictionary,
+    ) as unknown;
+
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
+      return null;
+    }
+
+    const record = parsed as Record<
+      string,
+      unknown
+    >;
+
+    const defaultSecret = readNonEmptySecret(
+      typeof record.default ===
+          "string"
+        ? record.default
+        : undefined,
     );
+
+    if (defaultSecret) {
+      return {
+        kind: "secret_dictionary",
+        value: defaultSecret,
+      };
+    }
+
+    const firstSecret = Object.values(record)
+      .map((value) =>
+        typeof value === "string"
+          ? readNonEmptySecret(
+            value,
+          )
+          : null
+      )
+      .find(
+        (
+          value,
+        ): value is string => value !== null,
+      );
+
+    return firstSecret
+      ? {
+        kind: "secret_dictionary",
+        value: firstSecret,
+      }
+      : null;
+  } catch {
+    console.error(
+      "SUPABASE_SECRET_KEYS is not valid JSON.",
+    );
+
+    return null;
+  }
+}
+
+function readAdminCredential(
+  readEnv: EnvironmentReader,
+):
+  | AdminCredential
+  | null {
+  const directSecret = readNonEmptySecret(
+    readEnv(
+      "SUPABASE_SECRET_KEY",
+    ),
+  );
 
   if (directSecret) {
-    return directSecret;
+    return {
+      kind: "secret_key",
+      value: directSecret,
+    };
   }
 
-  /*
-   * New Supabase secret-key dictionary.
-   */
-  const secretDictionary =
-    Deno.env.get(
-      "SUPABASE_SECRET_KEYS",
-    );
+  const dictionarySecret = readSecretDictionary(
+    readEnv,
+  );
 
-  if (secretDictionary) {
-    try {
-      const parsed =
-        JSON.parse(
-          secretDictionary,
-        ) as Record<
-          string,
-          unknown
-        >;
+  if (dictionarySecret) {
+    return dictionarySecret;
+  }
 
-      const defaultSecret =
-        parsed.default;
+  const serviceRoleKey = readNonEmptySecret(
+    readEnv(
+      "SUPABASE_SERVICE_ROLE_KEY",
+    ),
+  );
 
-      if (
-        typeof defaultSecret ===
-          "string" &&
-        defaultSecret.trim() !== ""
-      ) {
-        return defaultSecret;
-      }
-
-      const firstSecret =
-        Object.values(parsed).find(
-          (
-            value,
-          ): value is string =>
-            typeof value ===
-              "string" &&
-            value.trim() !== "",
-        );
-
-      if (firstSecret) {
-        return firstSecret;
-      }
-    } catch {
-      console.error(
-        "SUPABASE_SECRET_KEYS is not valid JSON.",
-      );
-    }
+  if (serviceRoleKey) {
+    return {
+      kind: "legacy_service_role",
+      value: serviceRoleKey,
+    };
   }
 
   return null;
 }
 
-export function createAdminClient():
-  DatabaseClient {
-  const supabaseUrl =
-    Deno.env.get("SUPABASE_URL");
+export function createAdminClient(
+  readEnv: EnvironmentReader = (
+    name,
+  ) => Deno.env.get(name),
+): DatabaseClient {
+  const supabaseUrl = readNonEmptySecret(
+    readEnv(
+      "SUPABASE_URL",
+    ),
+  );
 
-  const secretKey =
-    readSecretKey();
+  const credential = readAdminCredential(
+    readEnv,
+  );
 
   if (
     !supabaseUrl ||
-    !secretKey
+    !credential
   ) {
     throw new HttpError(
       500,
@@ -120,7 +184,7 @@ export function createAdminClient():
 
   return createClient(
     supabaseUrl,
-    secretKey,
+    credential.value,
     {
       auth: {
         persistSession: false,
@@ -134,10 +198,9 @@ export function createAdminClient():
 function bearerToken(
   request: Request,
 ): string | null {
-  const authorization =
-    request.headers.get(
-      "Authorization",
-    );
+  const authorization = request.headers.get(
+    "Authorization",
+  );
 
   if (
     !authorization?.startsWith(
@@ -157,16 +220,21 @@ function bearerToken(
 export async function authenticateRequest(
   request: Request,
   admin: DatabaseClient,
+  readEnv: EnvironmentReader = (
+    name,
+  ) => Deno.env.get(name),
 ): Promise<RequestAuth> {
-  const expectedJobSecret =
-    Deno.env.get(
+  const expectedJobSecret = readNonEmptySecret(
+    readEnv(
       "HUMOB_RATING_JOB_SECRET",
-    );
+    ),
+  );
 
-  const receivedJobSecret =
+  const receivedJobSecret = readNonEmptySecret(
     request.headers.get(
       "x-humob-job-secret",
-    );
+    ) ?? undefined,
+  );
 
   if (
     expectedJobSecret &&
@@ -181,17 +249,15 @@ export async function authenticateRequest(
     };
   }
 
-  const token =
-    bearerToken(request);
+  const token = bearerToken(request);
 
   if (token) {
     const {
       data,
       error,
-    } =
-      await admin.auth.getUser(
-        token,
-      );
+    } = await admin.auth.getUser(
+      token,
+    );
 
     if (
       !error &&
@@ -258,23 +324,20 @@ export async function claimDailyMatchForRating(
     );
   }
 
-  const staleBefore =
-    new Date(
-      now.getTime() -
-        PROCESSING_STALE_AFTER_MS,
-    );
+  const staleBefore = new Date(
+    now.getTime() -
+      PROCESSING_STALE_AFTER_MS,
+  );
 
-  const processingStartedAt =
-    input.dailyMatch
+  const processingStartedAt = input.dailyMatch
       .processing_started_at
-      ? new Date(
-          input.dailyMatch
-            .processing_started_at,
-        )
-      : null;
+    ? new Date(
+      input.dailyMatch
+        .processing_started_at,
+    )
+    : null;
 
-  const isStaleProcessing =
-    input.dailyMatch.status ===
+  const isStaleProcessing = input.dailyMatch.status ===
       "processing" &&
     processingStartedAt !== null &&
     !Number.isNaN(
@@ -285,10 +348,9 @@ export async function claimDailyMatchForRating(
 
   if (
     !FINALIZABLE_MATCH_STATUSES.includes(
-      input.dailyMatch.status as
-        (
-          typeof FINALIZABLE_MATCH_STATUSES
-        )[number],
+      input.dailyMatch.status as (
+        typeof FINALIZABLE_MATCH_STATUSES
+      )[number],
     ) &&
     !isStaleProcessing
   ) {
@@ -299,11 +361,9 @@ export async function claimDailyMatchForRating(
     );
   }
 
-  const nowIso =
-    now.toISOString();
+  const nowIso = now.toISOString();
 
-  const lockedAt =
-    input.dailyMatch.locked_at ??
+  const lockedAt = input.dailyMatch.locked_at ??
     input.dailyMatch
       .input_closes_at ??
     nowIso;
@@ -313,18 +373,14 @@ export async function claimDailyMatchForRating(
     .update({
       status: "processing",
 
-      locked_at:
-        lockedAt,
+      locked_at: lockedAt,
 
-      queued_at:
-        input.dailyMatch
-          .queued_at ?? nowIso,
+      queued_at: input.dailyMatch
+        .queued_at ?? nowIso,
 
-      processing_started_at:
-        nowIso,
+      processing_started_at: nowIso,
 
-      updated_at:
-        nowIso,
+      updated_at: nowIso,
     })
     .eq(
       "id",
@@ -366,11 +422,9 @@ export async function claimDailyMatchForRating(
     console.error(
       "Daily Match claim failed",
       {
-        code:
-          error.code ?? null,
+        code: error.code ?? null,
 
-        message:
-          error.message,
+        message: error.message,
       },
     );
 
@@ -401,8 +455,7 @@ export async function markDailyMatchFailed(
     .update({
       status: "failed",
 
-      updated_at:
-        new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
     .eq("id", dailyMatchId)
     .eq("status", "processing");
@@ -413,11 +466,9 @@ export async function markDailyMatchFailed(
       {
         dailyMatchId,
 
-        code:
-          error.code ?? null,
+        code: error.code ?? null,
 
-        message:
-          error.message,
+        message: error.message,
       },
     );
   }
@@ -431,82 +482,57 @@ export async function insertFinalRating(
   inputHash: string,
 ): Promise<ExistingRatingRow> {
   const payload = {
-    daily_match_id:
-      input.dailyMatch.id,
+    daily_match_id: input.dailyMatch.id,
 
-    user_id:
-      input.dailyMatch.user_id,
+    user_id: input.dailyMatch.user_id,
 
-    scoring_config_id:
-      input.scoringConfig.id,
+    scoring_config_id: input.scoringConfig.id,
 
-    energy_has_data:
-      logic.hasData.energy,
+    energy_has_data: logic.hasData.energy,
 
-    focus_has_data:
-      logic.hasData.focus,
+    focus_has_data: logic.hasData.focus,
 
-    discipline_has_data:
-      logic.hasData.discipline,
+    discipline_has_data: logic.hasData.discipline,
 
-    responsibility_has_data:
-      logic.hasData.responsibility,
+    responsibility_has_data: logic.hasData.responsibility,
 
-    logic_energy:
-      logic.logic.energy,
+    logic_energy: logic.logic.energy,
 
-    logic_focus:
-      logic.logic.focus,
+    logic_focus: logic.logic.focus,
 
-    logic_discipline:
-      logic.logic.discipline,
+    logic_discipline: logic.logic.discipline,
 
-    logic_responsibility:
-      logic.logic.responsibility,
+    logic_responsibility: logic.logic.responsibility,
 
-    ai_energy_adjustment:
-      final.adjustments.energy,
+    ai_energy_adjustment: final.adjustments.energy,
 
-    ai_focus_adjustment:
-      final.adjustments.focus,
+    ai_focus_adjustment: final.adjustments.focus,
 
-    ai_discipline_adjustment:
-      final.adjustments.discipline,
+    ai_discipline_adjustment: final.adjustments.discipline,
 
-    ai_responsibility_adjustment:
-      final.adjustments
-        .responsibility,
+    ai_responsibility_adjustment: final.adjustments
+      .responsibility,
 
-    energy_rating:
-      final.ratings.energy,
+    energy_rating: final.ratings.energy,
 
-    focus_rating:
-      final.ratings.focus,
+    focus_rating: final.ratings.focus,
 
-    discipline_rating:
-      final.ratings.discipline,
+    discipline_rating: final.ratings.discipline,
 
-        responsibility_rating:
-      final.ratings
-        .responsibility,
+    responsibility_rating: final.ratings
+      .responsibility,
 
-    overall_rating:
-      final.overall,
+    overall_rating: final.overall,
 
-    source:
-      final.source,
+    source: final.source,
 
-    provider_used:
-      final.provider,
+    provider_used: final.provider,
 
-    model_used:
-      final.model,
+    model_used: final.model,
 
-    input_hash:
-      inputHash,
+    input_hash: inputHash,
 
-    validation_flags:
-      final.validationFlags,
+    validation_flags: final.validationFlags,
   };
 
   const {
@@ -533,23 +559,21 @@ export async function insertFinalRating(
    * the same rating first.
    */
   if (error?.code === "23505") {
-    const existing =
-      await admin
-        .from("daily_ratings")
-        .select("*")
-        .eq(
-          "daily_match_id",
-          input.dailyMatch.id,
-        )
-        .maybeSingle();
+    const existing = await admin
+      .from("daily_ratings")
+      .select("*")
+      .eq(
+        "daily_match_id",
+        input.dailyMatch.id,
+      )
+      .maybeSingle();
 
     if (
       !existing.error &&
       existing.data
     ) {
       return (
-        existing.data as
-          ExistingRatingRow
+        existing.data as ExistingRatingRow
       );
     }
   }
@@ -557,11 +581,9 @@ export async function insertFinalRating(
   console.error(
     "Final rating insert failed",
     {
-      code:
-        error?.code ?? null,
+      code: error?.code ?? null,
 
-      message:
-        error?.message ??
+      message: error?.message ??
         "Unknown insert error",
     },
   );
