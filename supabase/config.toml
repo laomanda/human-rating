@@ -428,3 +428,9 @@ verify_jwt = false
 # authenticates requests using x-humob-job-secret.
 [functions.process-daily-ratings]
 verify_jwt = false
+
+# HuMob internal Daily Match lifecycle queue worker.
+# Gateway JWT verification is disabled intentionally because
+# the function authenticates requests using x-humob-job-secret.
+[functions.queue-daily-ratings]
+verify_jwt = false
