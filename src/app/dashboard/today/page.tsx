@@ -33,6 +33,10 @@ import {
   formatDateTime,
 } from "@/features/dashboard/formatters";
 
+import { getDailyRatingForMatch } from "@/features/dashboard/queries";
+import { RatingMetadata } from "@/features/dashboard/rating-metadata";
+import { RatingSummary } from "@/features/dashboard/rating-summary";
+
 import { createClient } from "@/lib/supabase/server";
 
 type DailyMatchStatus =
@@ -90,6 +94,15 @@ export default async function TodayMatchPage() {
   }
 
   const dailyMatch = data.dailyMatch;
+
+  const dailyRating =
+    dailyMatch.status === "rated"
+      ? await getDailyRatingForMatch(
+          supabase,
+          user,
+          dailyMatch.id,
+        )
+      : null;
 
   const canEdit =
     isDailyMatchEditable(dailyMatch);
@@ -177,6 +190,42 @@ export default async function TodayMatchPage() {
         serverNow={serverNow}
         variant="panel"
       />
+
+      {dailyMatch.status === "rated" ? (
+        dailyRating ? (
+          <>
+            <RatingSummary
+              overall_rating={
+                dailyRating.overall_rating
+              }
+              energy_rating={
+                dailyRating.energy_rating
+              }
+              focus_rating={
+                dailyRating.focus_rating
+              }
+              discipline_rating={
+                dailyRating.discipline_rating
+              }
+              responsibility_rating={
+                dailyRating
+                  .responsibility_rating
+              }
+              source={dailyRating.source}
+              status={dailyMatch.status}
+            />
+
+            <RatingMetadata
+              source={dailyRating.source}
+              validationFlags={
+                dailyRating.validation_flags
+              }
+            />
+          </>
+        ) : (
+          <RatingUnavailable />
+        )
+      ) : null}
 
       {!canEdit ? (
         <section className="flex items-start gap-4 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5">
@@ -275,6 +324,30 @@ export default async function TodayMatchPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+function RatingUnavailable() {
+  return (
+    <section className="flex items-start gap-4 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5">
+      <div className="rounded-xl bg-amber-400/10 p-2.5 text-amber-300">
+        <AlertTriangle
+          aria-hidden="true"
+          className="h-5 w-5"
+        />
+      </div>
+
+      <div>
+        <h2 className="font-medium text-amber-200">
+          Rating belum dapat ditampilkan
+        </h2>
+
+        <p className="mt-1 text-sm leading-6 text-amber-200/60">
+          Daily Match sudah selesai, tetapi row rating
+          belum tersedia untuk akun ini.
+        </p>
+      </div>
+    </section>
   );
 }
 

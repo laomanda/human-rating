@@ -655,3 +655,24 @@ export async function getDashboardData(
     warnings,
   };
 }
+
+export async function getDailyRatingForMatch(
+  supabase: SupabaseClient,
+  user: User,
+  dailyMatchId: string,
+): Promise<DailyRatingRow | null> {
+  const { data, error } = await supabase
+    .from("daily_ratings")
+    .select(DAILY_RATING_SELECT)
+    .eq("user_id", user.id)
+    .eq("daily_match_id", dailyMatchId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Daily rating gagal dimuat: ${error.message}`,
+    );
+  }
+
+  return normalizeDailyRating(data);
+}

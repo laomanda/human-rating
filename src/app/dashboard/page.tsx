@@ -3,12 +3,9 @@ import type { ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
-  BatteryCharging,
   CalendarDays,
   CheckCircle2,
-  ClipboardCheck,
   Clock3,
-  Focus,
   Gauge,
   History,
   Trophy,
@@ -30,6 +27,9 @@ import {
 } from "@/features/dashboard/formatters";
 
 import { getDashboardData } from "@/features/dashboard/queries";
+import { RatingMetadata } from "@/features/dashboard/rating-metadata";
+import { RatingSummary } from "@/features/dashboard/rating-summary";
+import { RatingTrend } from "@/features/dashboard/rating-trend";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -69,9 +69,18 @@ export default async function DashboardPage() {
   const username =
     dashboard.profile?.username ?? null;
 
-  const latestRatingDate =
-    dashboard.latestRatingMatch?.match_date ??
-    null;
+  const displayedRating =
+    dashboard.todayRating ??
+    dashboard.latestRating;
+
+  const displayedRatingMatch =
+    dashboard.todayRating
+      ? dashboard.todayMatch
+      : dashboard.latestRatingMatch;
+
+  const isTodayRating =
+    displayedRating !== null &&
+    dashboard.todayRating !== null;
 
   const serverNow = new Date().toISOString();
 
@@ -147,7 +156,7 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-3">
           <ScoreCard
             icon={<Gauge className="h-5 w-5" />}
             title="Rata-rata keseluruhan"
@@ -163,68 +172,100 @@ export default async function DashboardPage() {
 
           <ScoreCard
             icon={
-              <BatteryCharging className="h-5 w-5" />
+              <CalendarDays className="h-5 w-5" />
             }
-            title="Energy terbaru"
-            value={formatScore(
-              dashboard.latestRating?.energy_rating ??
-              null,
+            title="Hari dinilai"
+            value={String(
+              dashboard.aggregate.ratingCount,
             )}
             description={
-              latestRatingDate
-                ? formatDateOnly(latestRatingDate)
+              dashboard.aggregate.ratingCount > 0
+                ? "Rating final tersimpan"
                 : "Belum ada rating"
             }
           />
 
-          <ScoreCard
-            icon={<Focus className="h-5 w-5" />}
-            title="Focus terbaru"
-            value={formatScore(
-              dashboard.latestRating?.focus_rating ??
-              null,
+          <RatingTrend
+            overallRatings={dashboard.history.map(
+              ({ rating }) =>
+                rating?.overall_rating ?? null,
             )}
-            description={
-              dashboard.latestRating?.focus_has_data
-                ? "Data aktivitas tersedia"
-                : "Belum ada data focus"
-            }
-          />
-
-          <ScoreCard
-            icon={
-              <CheckCircle2 className="h-5 w-5" />
-            }
-            title="Discipline terbaru"
-            value={formatScore(
-              dashboard.latestRating
-                ?.discipline_rating ?? null,
-            )}
-            description={
-              dashboard.latestRating
-                ?.discipline_has_data
-                ? "Data aktivitas tersedia"
-                : "Belum ada data discipline"
-            }
-          />
-
-          <ScoreCard
-            icon={
-              <ClipboardCheck className="h-5 w-5" />
-            }
-            title="Responsibility terbaru"
-            value={formatScore(
-              dashboard.latestRating
-                ?.responsibility_rating ?? null,
-            )}
-            description={
-              dashboard.latestRating
-                ?.responsibility_has_data
-                ? "Data tanggung jawab tersedia"
-                : "Belum ada data responsibility"
-            }
           />
         </div>
+      </section>
+
+      <section
+        aria-labelledby="rating-overview-title"
+        className="space-y-4"
+      >
+        <div>
+          <h2
+            id="rating-overview-title"
+            className="font-semibold tracking-tight text-white"
+          >
+            {isTodayRating
+              ? "Rating Hari Ini"
+              : displayedRating
+                ? "Rating Terbaru"
+                : "Rating Performa"}
+          </h2>
+
+          <p className="mt-1 text-sm text-zinc-500">
+            {isTodayRating
+              ? "Hasil ini berasal dari Daily Match hari ini."
+              : displayedRating
+                ? `Rating tersedia terakhir${
+                    displayedRatingMatch
+                      ?.match_date
+                      ? ` pada ${formatDateOnly(
+                          displayedRatingMatch
+                            .match_date,
+                        )}`
+                      : ""
+                  }.`
+                : "Rating akan muncul setelah Daily Match pertama selesai dinilai."}
+          </p>
+        </div>
+
+        {displayedRating ? (
+          <>
+            <RatingSummary
+              overall_rating={
+                displayedRating.overall_rating
+              }
+              energy_rating={
+                displayedRating.energy_rating
+              }
+              focus_rating={
+                displayedRating.focus_rating
+              }
+              discipline_rating={
+                displayedRating.discipline_rating
+              }
+              responsibility_rating={
+                displayedRating
+                  .responsibility_rating
+              }
+              source={displayedRating.source}
+              status={
+                displayedRatingMatch?.status ??
+                "rated"
+              }
+            />
+
+            <RatingMetadata
+              source={displayedRating.source}
+              validationFlags={
+                displayedRating.validation_flags
+              }
+            />
+          </>
+        ) : (
+          <EmptyState
+            title="Belum ada rating performa"
+            description="HuMob belum memiliki rating final untuk akun ini."
+          />
+        )}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
@@ -302,11 +343,12 @@ export default async function DashboardPage() {
               />
 
               <DataItem
-                label="Rating hari ini"
-                value={formatScore(
+                label="Hasil rating"
+                value={
                   dashboard.todayRating
-                    ?.overall_rating ?? null,
-                )}
+                    ? "Tersedia"
+                    : "Belum dinilai"
+                }
               />
             </dl>
           ) : (
