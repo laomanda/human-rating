@@ -236,6 +236,13 @@ export async function authenticateRequest(
     ) ?? undefined,
   );
 
+  console.log("JOB_SECRET_CHECK", {
+    expectedExists: Boolean(expectedJobSecret),
+    expectedLength: expectedJobSecret?.length ?? 0,
+    receivedExists: Boolean(receivedJobSecret),
+    receivedLength: receivedJobSecret?.length ?? 0,
+  });
+
   if (
     expectedJobSecret &&
     receivedJobSecret &&
@@ -474,14 +481,38 @@ export async function markDailyMatchFailed(
   }
 }
 
-export async function insertFinalRating(
-  admin: DatabaseClient,
+export function buildFinalRatingPayload(
   input: CanonicalRatingInput,
   logic: LogicScoreResult,
   final: FinalRatingResult,
   inputHash: string,
-): Promise<ExistingRatingRow> {
-  const payload = {
+): Record<string, unknown> {
+  const requiresAiMetadata =
+    final.source === "ai_primary" ||
+    final.source === "ai_fallback";
+
+  const providerUsed =
+    requiresAiMetadata
+      ? final.provider?.trim() || null
+      : null;
+
+  const modelUsed =
+    requiresAiMetadata
+      ? final.model?.trim() || null
+      : null;
+
+  if (
+    requiresAiMetadata &&
+    (!providerUsed || !modelUsed)
+  ) {
+    throw new HttpError(
+      500,
+      "RATING_PAYLOAD_INVALID",
+      "AI-based ratings must include provider and model metadata.",
+    );
+  }
+
+  return {
     daily_match_id: input.dailyMatch.id,
 
     user_id: input.dailyMatch.user_id,
@@ -522,18 +553,31 @@ export async function insertFinalRating(
     responsibility_rating: final.ratings
       .responsibility,
 
-    overall_rating: final.overall,
-
     source: final.source,
 
-    provider_used: final.provider,
+    provider_used: providerUsed,
 
-    model_used: final.model,
+    model_used: modelUsed,
 
     input_hash: inputHash,
 
     validation_flags: final.validationFlags,
   };
+}
+
+export async function insertFinalRating(
+  admin: DatabaseClient,
+  input: CanonicalRatingInput,
+  logic: LogicScoreResult,
+  final: FinalRatingResult,
+  inputHash: string,
+): Promise<ExistingRatingRow> {
+  const payload = buildFinalRatingPayload(
+    input,
+    logic,
+    final,
+    inputHash,
+  );
 
   const {
     data,
@@ -582,9 +626,9 @@ export async function insertFinalRating(
     "Final rating insert failed",
     {
       code: error?.code ?? null,
-
-      message: error?.message ??
-        "Unknown insert error",
+      message: error?.message ?? null,
+      details: error?.details ?? null,
+      hint: error?.hint ?? null,
     },
   );
 

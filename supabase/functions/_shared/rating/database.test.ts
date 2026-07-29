@@ -1,4 +1,9 @@
-import { authenticateRequest, createAdminClient } from "./database.ts";
+import {
+  authenticateRequest,
+  buildFinalRatingPayload,
+  createAdminClient,
+  insertFinalRating,
+} from "./database.ts";
 
 import type { DatabaseClient } from "./types.ts";
 
@@ -40,6 +45,19 @@ function assertEquals<T>(
       ].join("\n"),
     );
   }
+}
+
+function assertThrows(
+  callback: () => void,
+  message: string,
+): void {
+  try {
+    callback();
+  } catch {
+    return;
+  }
+
+  throw new Error(message);
 }
 
 function readEnv(
@@ -611,6 +629,286 @@ Deno.test(
       output,
       "[]",
       "Credential resolution should not write selected key material to console.",
+    );
+  },
+);
+
+Deno.test(
+  "insertFinalRating should create valid payload",
+  () => {
+    const input = {
+      dailyMatch: {
+        id: "daily-match-id",
+        user_id: "user-id",
+      },
+      scoringConfig: {
+        id: "scoring-config-id",
+      },
+    } as unknown as Parameters<
+      typeof buildFinalRatingPayload
+    >[0];
+
+    const logic = {
+      hasData: {
+        energy: true,
+        focus: true,
+        discipline: true,
+        responsibility: true,
+      },
+      logic: {
+        energy: 1,
+        focus: 2,
+        discipline: 3,
+        responsibility: 4,
+      },
+    } as unknown as Parameters<
+      typeof buildFinalRatingPayload
+    >[1];
+
+    const aiPayload = buildFinalRatingPayload(
+      input,
+      logic,
+      {
+        source: "ai_primary",
+        provider: "groq",
+        model: "openai/gpt-oss-120b",
+        adjustments: {
+          energy: 0,
+          focus: 0,
+          discipline: 0,
+          responsibility: 0,
+        },
+        ratings: {
+          energy: 1,
+          focus: 2,
+          discipline: 3,
+          responsibility: 4,
+        },
+        overall: 5,
+        validationFlags: [],
+      },
+      "hash-1",
+    );
+
+    assertEquals(
+      aiPayload.source,
+      "ai_primary",
+      "AI rows must preserve the AI source.",
+    );
+
+    assertEquals(
+      aiPayload.provider_used,
+      "groq",
+      "AI primary rows must include provider metadata.",
+    );
+
+    assertEquals(
+      aiPayload.model_used,
+      "openai/gpt-oss-120b",
+      "AI primary rows must include model metadata.",
+    );
+
+    assertEquals(
+      Object.hasOwn(
+        aiPayload,
+        "overall_rating",
+      ),
+      false,
+      "overall_rating is a generated database column and must not be inserted explicitly.",
+    );
+
+    const fallbackPayload = buildFinalRatingPayload(
+      input,
+      logic,
+      {
+        source: "logic_fallback",
+        provider: null,
+        model: null,
+        adjustments: {
+          energy: 0,
+          focus: 0,
+          discipline: 0,
+          responsibility: 0,
+        },
+        ratings: {
+          energy: 1,
+          focus: 2,
+          discipline: 3,
+          responsibility: 4,
+        },
+        overall: 5,
+        validationFlags: [],
+      },
+      "hash-2",
+    );
+
+    assertEquals(
+      fallbackPayload.provider_used,
+      null,
+      "Logic fallback rows may omit provider metadata.",
+    );
+
+    assertEquals(
+      fallbackPayload.model_used,
+      null,
+      "Logic fallback rows may omit model metadata.",
+    );
+
+    assertThrows(
+      () =>
+        buildFinalRatingPayload(
+          input,
+          logic,
+          {
+            source: "ai_primary",
+            provider: null,
+            model: "openai/gpt-oss-120b",
+            adjustments: {
+              energy: 0,
+              focus: 0,
+              discipline: 0,
+              responsibility: 0,
+            },
+            ratings: {
+              energy: 1,
+              focus: 2,
+              discipline: 3,
+              responsibility: 4,
+            },
+            overall: 5,
+            validationFlags: [],
+          },
+          "hash-3",
+        ),
+      "AI sources must be rejected when provider metadata is missing.",
+    );
+  },
+);
+
+Deno.test(
+  "insertFinalRating returns an existing row for duplicate daily matches",
+  async () => {
+    const existingRow = {
+      id: "rating-id",
+      daily_match_id: "daily-match-id",
+      user_id: "user-id",
+      scoring_config_id: "scoring-config-id",
+      energy_has_data: true,
+      focus_has_data: true,
+      discipline_has_data: true,
+      responsibility_has_data: true,
+      logic_energy: 1,
+      logic_focus: 2,
+      logic_discipline: 3,
+      logic_responsibility: 4,
+      ai_energy_adjustment: 0,
+      ai_focus_adjustment: 0,
+      ai_discipline_adjustment: 0,
+      ai_responsibility_adjustment: 0,
+      energy_rating: 1,
+      focus_rating: 2,
+      discipline_rating: 3,
+      responsibility_rating: 4,
+      overall_rating: 5,
+      source: "logic_fallback" as const,
+      provider_used: null,
+      model_used: null,
+      input_hash: "hash-2",
+      validation_flags: [],
+      created_at: "2026-07-29T00:00:00.000Z",
+    };
+
+    const admin = {
+      from: (table: string) => {
+        if (table !== "daily_ratings") {
+          throw new Error(
+            `Unexpected table: ${table}`,
+          );
+        }
+
+        return {
+          insert: () => ({
+            select: () => ({
+              single: async () => ({
+                data: null,
+                error: {
+                  code: "23505",
+                  message: "duplicate key",
+                  details: "duplicate key",
+                  hint: null,
+                },
+              }),
+            }),
+          }),
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: existingRow,
+                error: null,
+              }),
+            }),
+          }),
+        };
+      },
+    } as unknown as DatabaseClient;
+
+    const result = await insertFinalRating(
+      admin,
+      {
+        dailyMatch: {
+          id: "daily-match-id",
+          user_id: "user-id",
+        },
+        scoringConfig: {
+          id: "scoring-config-id",
+        },
+      } as unknown as Parameters<
+        typeof insertFinalRating
+      >[1],
+      {
+        hasData: {
+          energy: true,
+          focus: true,
+          discipline: true,
+          responsibility: true,
+        },
+        logic: {
+          energy: 1,
+          focus: 2,
+          discipline: 3,
+          responsibility: 4,
+        },
+      } as unknown as Parameters<
+        typeof insertFinalRating
+      >[2],
+      {
+        source: "logic_fallback",
+        provider: null,
+        model: null,
+        adjustments: {
+          energy: 0,
+          focus: 0,
+          discipline: 0,
+          responsibility: 0,
+        },
+        ratings: {
+          energy: 1,
+          focus: 2,
+          discipline: 3,
+          responsibility: 4,
+        },
+        overall: 5,
+        validationFlags: [],
+      } as unknown as Parameters<
+        typeof insertFinalRating
+      >[3],
+      "hash-2",
+    );
+
+    assertEquals(
+      result,
+      existingRow,
+      "Duplicate daily matches should return the existing rating row.",
     );
   },
 );
