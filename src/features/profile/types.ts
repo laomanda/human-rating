@@ -1,3 +1,5 @@
+import type { AchievementCollection } from "@/features/achievement/achievement-types";
+
 export type ProfileRecord = {
   id: string;
   username: string | null;
@@ -79,4 +81,5 @@ export type ProfilePerformanceStats = {
 export type ProfilePageData = {
   profile: ProfileRecord;
   stats: ProfilePerformanceStats;
+  achievements: AchievementCollection;
 };

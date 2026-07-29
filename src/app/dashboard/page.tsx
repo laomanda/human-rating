@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Clock3,
   Gauge,
-  History,
   Trophy,
 } from "lucide-react";
 
@@ -26,10 +25,15 @@ import {
   getDateKeyForTimeZone,
 } from "@/features/dashboard/formatters";
 
+import { DimensionProgress } from "@/features/dashboard/dimension-progress";
+import { PerformanceChart } from "@/features/dashboard/perfomance-chart";
+import { PerformanceCalendar } from "@/features/dashboard/performance-calendar";
+import { PerformanceHistory } from "@/features/dashboard/perfomance-history";
 import { getDashboardData } from "@/features/dashboard/queries";
 import { RatingMetadata } from "@/features/dashboard/rating-metadata";
 import { RatingSummary } from "@/features/dashboard/rating-summary";
 import { RatingTrend } from "@/features/dashboard/rating-trend";
+import { AchievementList } from "@/features/achievement/achievement-list";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -134,7 +138,7 @@ export default async function DashboardPage() {
 
           <Link
             href="/dashboard/profile"
-            className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-white/[0.07] hover:text-white"
+            className="inline-flex items-center rounded-xl border border-white/10 bg-white/3 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-white/7 hover:text-white"
           >
             Lihat Profil
           </Link>
@@ -267,6 +271,59 @@ export default async function DashboardPage() {
           />
         )}
       </section>
+
+      <section
+        aria-labelledby="performance-journey-title"
+        className="space-y-4"
+      >
+        <div>
+          <h2
+            id="performance-journey-title"
+            className="font-semibold tracking-tight text-white"
+          >
+            Perjalanan Performa
+          </h2>
+
+          <p className="mt-1 text-sm text-zinc-500">
+            Visualisasi rating final dan rata-rata setiap dimensi performa.
+          </p>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+          <PerformanceChart
+            history={dashboard.history}
+          />
+
+          <DimensionProgress
+            aggregate={dashboard.aggregate}
+          />
+        </div>
+      </section>
+
+      <AchievementList
+        title="Achievement Terbaru"
+        subtitle="Unlock terbaru dari rating performa nyata."
+        achievements={
+          dashboard.achievements.latestUnlocked.slice(
+            0,
+            3,
+          )
+        }
+        unlockedCount={
+          dashboard.achievements.unlockedCount
+        }
+        totalCount={
+          dashboard.achievements.totalCount
+        }
+        available={
+          dashboard.achievements.available
+        }
+      />
+
+      <PerformanceCalendar
+        days={dashboard.calendarDays}
+        initialDate={todayDate}
+      />
 
       <section className="grid gap-6 lg:grid-cols-2">
         <DataPanel
@@ -439,87 +496,9 @@ export default async function DashboardPage() {
         </DataPanel>
       </section>
 
-      <DataPanel
-        icon={<History className="h-5 w-5" />}
-        title="Riwayat Performa Terbaru"
-        subtitle="Maksimal 30 Daily Match terbaru"
-      >
-        {dashboard.history.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-zinc-500">
-                  <th
-                    scope="col"
-                    className="px-3 py-3 font-medium"
-                  >
-                    Tanggal
-                  </th>
-
-                  <th
-                    scope="col"
-                    className="px-3 py-3 font-medium"
-                  >
-                    Status
-                  </th>
-
-                  <th
-                    scope="col"
-                    className="px-3 py-3 font-medium"
-                  >
-                    Input
-                  </th>
-
-                  <th
-                    scope="col"
-                    className="px-3 py-3 font-medium"
-                  >
-                    Overall
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {dashboard.history.map(
-                  ({ match, rating }) => (
-                    <tr
-                      key={match.id}
-                      className="border-b border-white/5 last:border-b-0"
-                    >
-                      <td className="px-3 py-4 text-zinc-300">
-                        {formatDateOnly(
-                          match.match_date,
-                        )}
-                      </td>
-
-                      <td className="px-3 py-4 text-zinc-400">
-                        {formatStatus(match.status)}
-                      </td>
-
-                      <td className="px-3 py-4 text-zinc-400">
-                        {match.input_item_count}
-                      </td>
-
-                      <td className="px-3 py-4 font-medium text-white">
-                        {rating
-                          ? formatScore(
-                            rating.overall_rating,
-                          )
-                          : "Belum dinilai"}
-                      </td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState
-            title="Belum ada riwayat performa"
-            description="Riwayat akan muncul setelah Daily Match tersedia untuk akun ini."
-          />
-        )}
-      </DataPanel>
+      <PerformanceHistory
+        history={dashboard.history}
+      />
 
       {showDeveloperDiagnostics ? (
         <>
@@ -676,12 +655,12 @@ function DataItem({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.025] p-4">
+    <div className="rounded-xl border border-white/5 bg-white/2.5 p-4">
       <dt className="text-xs uppercase tracking-wide text-zinc-600">
         {label}
       </dt>
 
-      <dd className="mt-2 break-words text-sm text-zinc-300">
+      <dd className="mt-2 wrap-break-word text-sm text-zinc-300">
         {value}
       </dd>
     </div>

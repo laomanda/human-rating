@@ -114,9 +114,8 @@ export function AppSidebar({
                     </div>
 
                     <p className="mt-2 text-xs leading-5 text-zinc-600">
-                        Beranda, Input, dan Profil sudah aktif.
-                        Kalender serta Jelajah akan tersedia pada
-                        fase berikutnya.
+                        Beranda, Input, Profil, dan Jelajah
+                        sudah aktif.
                     </p>
                 </div>
 

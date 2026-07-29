@@ -8,6 +8,8 @@ import type {
   StrongestProfileAttribute,
 } from "@/features/profile/types";
 
+import { getAchievementCollection } from "@/features/achievement/queries";
+
 const PROFILE_SELECT = [
   "id",
   "username",
@@ -248,6 +250,7 @@ export async function getMyProfilePageData(
     ratingsResult,
     ratedDaysResult,
     bestRatingResult,
+    achievementsResult,
   ] = await Promise.all([
     getMyProfile(supabase, userId),
 
@@ -280,6 +283,11 @@ export async function getMyProfilePageData(
       })
       .limit(1)
       .maybeSingle(),
+
+    getAchievementCollection(
+      supabase,
+      userId,
+    ),
   ]);
 
   if (!profile) {
@@ -340,5 +348,6 @@ export async function getMyProfilePageData(
       ratedDays,
       bestOverall,
     ),
+    achievements: achievementsResult,
   };
 }

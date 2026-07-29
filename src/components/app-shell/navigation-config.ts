@@ -48,7 +48,7 @@ export const APP_NAVIGATION: readonly AppNavigationItem[] = [
     href: "/dashboard/explore",
     icon: Search,
     exact: false,
-    enabled: false,
+    enabled: true,
   },
   {
     label: "Profil",

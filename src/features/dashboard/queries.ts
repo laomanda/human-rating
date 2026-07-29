@@ -17,8 +17,15 @@ import type {
   DashboardData,
   DailyMatchRow,
   DailyRatingRow,
+  PerformanceCalendarDay,
+  PerformanceCalendarRating,
   ProfileSummary,
 } from "@/features/dashboard/types";
+
+import { getAchievementCollection } from "@/features/achievement/queries";
+
+const RECENT_RATING_LIMIT = 60;
+const CALENDAR_DATA_LIMIT = 400;
 
 const PROFILE_SELECT = `
   id,
@@ -420,6 +427,38 @@ function createRatingAggregate(
   };
 }
 
+function createCalendarRating(
+  rating: DailyRatingRow,
+): PerformanceCalendarRating {
+  return {
+    overall_rating: rating.overall_rating,
+    energy_rating: rating.energy_rating,
+    focus_rating: rating.focus_rating,
+    discipline_rating: rating.discipline_rating,
+    responsibility_rating:
+      rating.responsibility_rating,
+    source: rating.source,
+  };
+}
+
+function createCalendarDays(
+  matches: DailyMatchRow[],
+  ratingByMatchId: Map<string, DailyRatingRow>,
+): PerformanceCalendarDay[] {
+  return matches.map((match) => {
+    const rating = ratingByMatchId.get(match.id) ??
+      null;
+
+    return {
+      date: match.match_date,
+      status: match.status,
+      rating: rating
+        ? createCalendarRating(rating)
+        : null,
+    };
+  });
+}
+
 export async function getDashboardData(
   supabase: SupabaseClient,
   user: User,
@@ -432,6 +471,7 @@ export async function getDashboardData(
     matchesResult,
     ratingsResult,
     bestRatingResult,
+    achievementsResult,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -452,7 +492,7 @@ export async function getDashboardData(
       .order("match_date", {
         ascending: false,
       })
-      .limit(45),
+      .limit(CALENDAR_DATA_LIMIT),
 
     supabase
       .from("daily_ratings")
@@ -462,7 +502,7 @@ export async function getDashboardData(
       .order("created_at", {
         ascending: false,
       })
-      .limit(60),
+      .limit(CALENDAR_DATA_LIMIT),
 
     supabase
       .from("daily_ratings")
@@ -477,6 +517,11 @@ export async function getDashboardData(
       })
       .limit(1)
       .maybeSingle(),
+
+    getAchievementCollection(
+      supabase,
+      user.id,
+    ),
   ]);
 
   addWarning(
@@ -532,8 +577,13 @@ export async function getDashboardData(
    * Kita tidak memakai fungsi aggregate PostgREST karena
    * aggregate functions tidak diaktifkan pada Supabase ini.
    */
+  const recentRatings = ratings.slice(
+    0,
+    RECENT_RATING_LIMIT,
+  );
+
   const aggregate = createRatingAggregate(
-    ratings,
+    recentRatings,
   );
 
   const ratingByMatchId = new Map<
@@ -600,7 +650,7 @@ export async function getDashboardData(
     : null;
 
   /*
-   * Riwayat daily_matches hanya mengambil 45 row terbaru.
+   * Data utama mengambil rentang kalender terbaru.
    * Jika best rating berada di luar rentang itu, ambil
    * daily match terkait secara terpisah.
    */
@@ -632,6 +682,11 @@ export async function getDashboardData(
         null,
     }));
 
+  const calendarDays = createCalendarDays(
+    matches,
+    ratingByMatchId,
+  );
+
   return {
     profile,
     appConfig,
@@ -652,6 +707,8 @@ export async function getDashboardData(
 
     aggregate,
     history,
+    calendarDays,
+    achievements: achievementsResult,
     warnings,
   };
 }

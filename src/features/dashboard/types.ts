@@ -1,3 +1,5 @@
+import type { AchievementCollection } from "@/features/achievement/achievement-types";
+
 export type ProfileSummary = {
   id: string;
   username: string | null;
@@ -64,6 +66,21 @@ export type DailyRatingRow = {
   created_at: string;
 };
 
+export type PerformanceCalendarRating = {
+  overall_rating: number | null;
+  energy_rating: number | null;
+  focus_rating: number | null;
+  discipline_rating: number | null;
+  responsibility_rating: number | null;
+  source: string;
+};
+
+export type PerformanceCalendarDay = {
+  date: string;
+  status: string;
+  rating: PerformanceCalendarRating | null;
+};
+
 export type DashboardAggregate = {
   averageOverall: number | null;
   averageEnergy: number | null;
@@ -99,5 +116,7 @@ export type DashboardData = {
   aggregate: DashboardAggregate;
 
   history: DashboardHistoryItem[];
+  calendarDays: PerformanceCalendarDay[];
+  achievements: AchievementCollection;
   warnings: string[];
 };

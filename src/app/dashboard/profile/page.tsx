@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { ProfileHeader } from "@/features/profile/profile-header";
 import { ProfileStatCard } from "@/features/profile/profile-stat-card";
 
+import { AchievementList } from "@/features/achievement/achievement-list";
 import { formatScore } from "@/features/dashboard/formatters";
 
 import { getMyProfilePageData } from "@/features/profile/queries";
@@ -53,7 +54,7 @@ export default async function ProfilePage() {
     );
   }
 
-  const { profile, stats } = data;
+  const { profile, stats, achievements } = data;
 
   if (!profile.onboarding_completed) {
     redirect(
@@ -143,6 +144,16 @@ export default async function ProfilePage() {
           />
         </div>
       </section>
+
+      <AchievementList
+        title="Achievement Collection"
+        subtitle="Seluruh achievement yang terdeteksi dari data performa nyata."
+        achievements={achievements.achievements}
+        unlockedCount={achievements.unlockedCount}
+        totalCount={achievements.totalCount}
+        available={achievements.available}
+        emptyMessage="Belum ada achievement yang terbuka."
+      />
 
       <section className="rounded-2xl border border-app-border bg-app-surface p-5 sm:p-6">
         <div className="flex items-center gap-3">
