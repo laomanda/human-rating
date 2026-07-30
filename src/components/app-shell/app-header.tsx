@@ -87,15 +87,14 @@ export function AppHeader({ pathname }: AppHeaderProps) {
             )}
           </Link>
 
-          <button
-            type="button"
-            disabled
-            aria-label="Pengaturan segera tersedia"
-            title="Pengaturan segera tersedia"
-            className="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-white/5 bg-white/[0.025] text-zinc-600"
+          <Link
+            href="/dashboard/settings"
+            aria-label="Pengaturan"
+            title="Pengaturan"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
           >
             <Settings aria-hidden="true" className="h-5 w-5" />
-          </button>
+          </Link>
         </div>
       </div>
     </header>

@@ -14,18 +14,21 @@ type NotificationCardProps = {
 
 export function NotificationCard({ notification }: NotificationCardProps) {
   const [isPending, startTransition] = useTransition();
-  const [isRead, setIsRead] = useState<boolean>(notification.is_read);
+  const [readAt, setReadAt] = useState<string | null>(notification.read_at);
+
+  const isRead = readAt !== null;
   const meta = NOTIFICATION_TYPE_META[notification.type] ?? NOTIFICATION_TYPE_META.system;
   const Icon = meta.icon;
 
   const handleMarkAsRead = () => {
     if (isRead || isPending) return;
 
-    setIsRead(true);
+    const nowIso = new Date().toISOString();
+    setReadAt(nowIso);
     startTransition(async () => {
       const res = await markAsReadAction(notification.id);
       if (!res.success) {
-        setIsRead(notification.is_read);
+        setReadAt(notification.read_at);
       }
     });
   };
@@ -61,15 +64,15 @@ export function NotificationCard({ notification }: NotificationCardProps) {
               {formatDateTime(notification.created_at)}
             </span>
 
-            {notification.push_status && notification.push_status !== "sent" && notification.push_status !== "skipped" && (
+            {notification.delivery_status && notification.delivery_status !== "sent" && notification.delivery_status !== "skipped" && (
               <span
                 className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
-                  notification.push_status === "failed"
+                  notification.delivery_status === "failed"
                     ? "border border-red-500/20 bg-red-500/10 text-red-400"
                     : "border border-amber-500/20 bg-amber-500/10 text-amber-400"
                 }`}
               >
-                {notification.push_status === "failed" ? "Gagal dikirim" : "Menunggu pengiriman"}
+                {notification.delivery_status === "failed" ? "Gagal dikirim" : "Menunggu pengiriman"}
               </span>
             )}
           </div>

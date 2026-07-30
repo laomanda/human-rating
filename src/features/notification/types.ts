@@ -10,8 +10,12 @@ export type NotificationRow = {
   type: NotificationType;
   title: string;
   message: string;
-  is_read: boolean;
-  reference_id: string | null;
-  push_status: string;
+  payload: Record<string, unknown> | null;
+  delivery_status: string | null;
+  scheduled_for: string | null;
+  sent_at: string | null;
+  read_at: string | null;
+  fcm_message_id: string | null;
+  error_message: string | null;
   created_at: string;
 };

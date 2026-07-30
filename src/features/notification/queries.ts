@@ -11,9 +11,13 @@ const NOTIFICATION_SELECT = `
   type,
   title,
   message,
-  is_read,
-  reference_id,
-  push_status,
+  payload,
+  delivery_status,
+  scheduled_for,
+  sent_at,
+  read_at,
+  fcm_message_id,
+  error_message,
   created_at
 `;
 
@@ -82,9 +86,13 @@ export function normalizeNotification(value: unknown): NotificationRow | null {
     type: normalizeNotificationType(row.type),
     title,
     message,
-    is_read: row.is_read === true,
-    reference_id: asString(row.reference_id),
-    push_status: asString(row.push_status) ?? "pending",
+    payload: asRecord(row.payload),
+    delivery_status: asString(row.delivery_status),
+    scheduled_for: asString(row.scheduled_for),
+    sent_at: asString(row.sent_at),
+    read_at: asString(row.read_at),
+    fcm_message_id: asString(row.fcm_message_id),
+    error_message: asString(row.error_message),
     created_at: asString(row.created_at) ?? new Date().toISOString(),
   };
 }
@@ -134,7 +142,7 @@ export async function getUnreadNotificationCount(
     .from("notifications")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("is_read", false);
+    .is("read_at", null);
 
   if (error) {
     const formattedLog = formatSupabaseError(

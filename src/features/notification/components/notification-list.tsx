@@ -34,13 +34,14 @@ export function NotificationList({
     );
   }
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const unreadCount = notifications.filter((n) => n.read_at === null).length;
 
   const handleMarkAllAsRead = () => {
     if (unreadCount === 0 || isPending) return;
 
+    const nowIso = new Date().toISOString();
     setNotifications((current) =>
-      current.map((item) => ({ ...item, is_read: true })),
+      current.map((item) => ({ ...item, read_at: item.read_at ?? nowIso })),
     );
 
     startTransition(async () => {
