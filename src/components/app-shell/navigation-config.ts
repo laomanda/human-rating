@@ -40,7 +40,7 @@ export const APP_NAVIGATION: readonly AppNavigationItem[] = [
     href: "/dashboard/calendar",
     icon: CalendarDays,
     exact: false,
-    enabled: false,
+    enabled: true,
   },
   {
     label: "Jelajah",

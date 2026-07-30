@@ -733,3 +733,107 @@ export async function getDailyRatingForMatch(
 
   return normalizeDailyRating(data);
 }
+
+export type CalendarPageData = {
+  timeZone: string;
+  calendarDays: PerformanceCalendarDay[];
+  ratedCount: number;
+  warnings: string[];
+};
+
+export async function getCalendarPageData(
+  supabase: SupabaseClient,
+  user: User,
+): Promise<CalendarPageData> {
+  const warnings: string[] = [];
+
+  const [
+    profileResult,
+    matchesResult,
+    ratingsResult,
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(PROFILE_SELECT)
+      .eq("id", user.id)
+      .maybeSingle(),
+
+    supabase
+      .from("daily_matches")
+      .select(DAILY_MATCH_SELECT)
+      .eq("user_id", user.id)
+      .order("match_date", {
+        ascending: false,
+      })
+      .limit(CALENDAR_DATA_LIMIT),
+
+    supabase
+      .from("daily_ratings")
+      .select(DAILY_RATING_SELECT)
+      .eq("user_id", user.id)
+      .not("overall_rating", "is", null)
+      .order("created_at", {
+        ascending: false,
+      })
+      .limit(CALENDAR_DATA_LIMIT),
+  ]);
+
+  addWarning(
+    warnings,
+    "Profile query failed",
+    profileResult.error,
+  );
+
+  addWarning(
+    warnings,
+    "Daily matches query failed",
+    matchesResult.error,
+  );
+
+  addWarning(
+    warnings,
+    "Daily ratings query failed",
+    ratingsResult.error,
+  );
+
+  const profile = normalizeProfile(
+    profileResult.data,
+  );
+
+  const matches = normalizeMatches(
+    matchesResult.data,
+  );
+
+  const ratings = normalizeRatings(
+    ratingsResult.data,
+  );
+
+  const ratingByMatchId = new Map<
+    string,
+    DailyRatingRow
+  >(
+    ratings.map((rating) => [
+      rating.daily_match_id,
+      rating,
+    ]),
+  );
+
+  const timeZone =
+    matches.at(0)?.timezone ??
+    profile?.timezone ??
+    DEFAULT_TIME_ZONE;
+
+  const calendarDays = createCalendarDays(
+    matches,
+    ratingByMatchId,
+  );
+
+  const ratedCount = ratings.length;
+
+  return {
+    timeZone,
+    calendarDays,
+    ratedCount,
+    warnings,
+  };
+}
