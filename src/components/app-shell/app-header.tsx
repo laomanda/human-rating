@@ -1,22 +1,46 @@
-import {
-  Bell,
-  Settings,
-} from "lucide-react";
+"use client";
+
+import { Bell, Settings } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { getCurrentNavigationItem } from "@/components/app-shell/navigation-config";
+import { getUnreadNotificationCount } from "@/features/notification/queries";
+import { createClient } from "@/lib/supabase/client";
 
 type AppHeaderProps = {
   pathname: string;
 };
 
-export function AppHeader({
-  pathname,
-}: AppHeaderProps) {
-  const currentItem =
-    getCurrentNavigationItem(pathname);
+export function AppHeader({ pathname }: AppHeaderProps) {
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const currentItem = getCurrentNavigationItem(pathname);
 
-  const pageTitle =
-    currentItem?.label ?? "HuMob";
+  const pageTitle = currentItem?.label ?? "HuMob";
+
+  useEffect(() => {
+    let isMounted = true;
+    const supabase = createClient();
+
+    async function fetchUnreadCount() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user && isMounted) {
+        const count = await getUnreadNotificationCount(supabase, user.id);
+        if (isMounted) {
+          setUnreadCount(count);
+        }
+      }
+    }
+
+    fetchUnreadCount();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-30 border-b border-app-border bg-background/85 backdrop-blur-xl">
@@ -44,18 +68,24 @@ export function AppHeader({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled
-            aria-label="Notifikasi segera tersedia"
-            title="Notifikasi segera tersedia"
-            className="relative inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-white/5 bg-white/[0.025] text-zinc-600"
+          <Link
+            href="/dashboard/notifications"
+            aria-label={
+              unreadCount > 0
+                ? `Notifikasi, ${unreadCount} belum dibaca`
+                : "Notifikasi"
+            }
+            title="Notifikasi"
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
           >
-            <Bell
-              aria-hidden="true"
-              className="h-5 w-5"
-            />
-          </button>
+            <Bell aria-hidden="true" className="h-5 w-5" />
+
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[11px] font-bold text-white shadow-sm">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </Link>
 
           <button
             type="button"
@@ -64,10 +94,7 @@ export function AppHeader({
             title="Pengaturan segera tersedia"
             className="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-white/5 bg-white/[0.025] text-zinc-600"
           >
-            <Settings
-              aria-hidden="true"
-              className="h-5 w-5"
-            />
+            <Settings aria-hidden="true" className="h-5 w-5" />
           </button>
         </div>
       </div>

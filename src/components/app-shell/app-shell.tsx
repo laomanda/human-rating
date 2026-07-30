@@ -7,6 +7,8 @@ import { usePathname } from "next/navigation";
 import { AppHeader } from "@/components/app-shell/app-header";
 import { AppSidebar } from "@/components/app-shell/app-sidebar";
 import { MobileBottomNavigation } from "@/components/app-shell/mobile-bottom-nav";
+import { PwaInstallPrompt } from "@/features/pwa/pwa-install-prompt";
+import { PwaRegister } from "@/features/pwa/pwa-register";
 
 type AppShellProps = {
   children: ReactNode;
@@ -43,6 +45,9 @@ export function AppShell({
       <MobileBottomNavigation
         pathname={pathname}
       />
+
+      <PwaRegister />
+      <PwaInstallPrompt />
     </div>
   );
 }
