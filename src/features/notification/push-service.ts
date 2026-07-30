@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -125,23 +127,37 @@ export async function updatePushPreference(enabled: boolean) {
     return { success: false, error: "Tidak terautentikasi" };
   }
 
-  const { error } = await supabase
-    .from("notification_preferences")
-    .upsert(
-      {
-        user_id: user.id,
-        push_enabled: enabled,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "user_id",
-      },
-    );
+  const { data, error } = await supabase.rpc(
+    "update_my_notification_preference",
+    {
+      p_push_enabled: enabled,
+    },
+  );
 
   if (error) {
-    console.error("Failed to update push preference:", error.message);
-    return { success: false, error: error.message };
+    console.error("Push preference update failed", {
+      code: error.code ?? null,
+    });
+    return {
+      success: false,
+      error: "Gagal memperbarui preferensi notifikasi.",
+    };
   }
+
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    Array.isArray(data) ||
+    data.success !== true
+  ) {
+    return {
+      success: false,
+      error: "Preferensi notifikasi tidak dapat disimpan.",
+    };
+  }
+
+  revalidatePath("/dashboard/notifications");
+  revalidatePath("/dashboard/settings");
 
   return { success: true };
 }

@@ -38,28 +38,18 @@ function normalizeNotificationPreferences(
   raw: unknown,
   userId: string,
 ): SettingsNotificationPreferences {
-  if (!isRecord(raw) || typeof raw.id !== "string") {
+  if (!isRecord(raw)) {
     return {
-      id: "",
       user_id: userId,
       push_enabled: true,
-      email_enabled: false,
-      daily_reminder_enabled: true,
-      rating_completion_enabled: true,
-      achievement_notification_enabled: true,
     };
   }
 
   const pushEnabled = toBoolean(raw.push_enabled, true);
 
   return {
-    id: raw.id,
     user_id: typeof raw.user_id === "string" ? raw.user_id : userId,
     push_enabled: pushEnabled,
-    email_enabled: toBoolean(raw.email_enabled, false),
-    daily_reminder_enabled: pushEnabled,
-    rating_completion_enabled: pushEnabled,
-    achievement_notification_enabled: pushEnabled,
   };
 }
 
@@ -83,7 +73,7 @@ export async function getSettingsData(): Promise<SettingsData> {
 
   const prefsResult = await supabase
     .from("notification_preferences")
-    .select("id,user_id,push_enabled,email_enabled")
+    .select("user_id,push_enabled")
     .eq("user_id", user.id)
     .maybeSingle();
 

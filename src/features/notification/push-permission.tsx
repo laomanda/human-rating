@@ -94,7 +94,15 @@ export function PushPermission() {
         }
 
         // 4. Update preference
-        await updatePushPreference(true);
+        const preferenceResult = await updatePushPreference(true);
+
+        if (!preferenceResult.success) {
+          setErrorMessage(
+            preferenceResult.error ??
+              "Gagal menyimpan preferensi notifikasi.",
+          );
+          return;
+        }
 
         setCurrentToken(token);
         setStatus("enabled");
@@ -119,7 +127,15 @@ export function PushPermission() {
         }
 
         // 2. Update preference
-        await updatePushPreference(false);
+        const preferenceResult = await updatePushPreference(false);
+
+        if (!preferenceResult.success) {
+          setErrorMessage(
+            preferenceResult.error ??
+              "Gagal menyimpan preferensi notifikasi.",
+          );
+          return;
+        }
 
         setCurrentToken(null);
         setStatus("disabled");

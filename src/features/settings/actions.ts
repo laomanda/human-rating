@@ -131,17 +131,33 @@ export async function updatePrivacyAction(
     return { success: false, error: "Tidak terautentikasi." };
   }
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({ is_private: isPrivate, updated_at: new Date().toISOString() })
-    .eq("id", user.id);
+  const { data, error } = await supabase.rpc(
+    "update_my_profile_privacy",
+    {
+      p_is_private: isPrivate,
+    },
+  );
 
   if (error) {
     return { success: false, error: "Gagal memperbarui pengaturan privasi." };
   }
 
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    Array.isArray(data) ||
+    data.success !== true
+  ) {
+    return {
+      success: false,
+      error: "Pengaturan privasi tidak dapat disimpan.",
+    };
+  }
+
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard/profile");
+  revalidatePath("/dashboard/explore");
+  revalidatePath("/profile/[username]", "page");
 
   return { success: true };
 }
@@ -152,9 +168,6 @@ export async function updatePrivacyAction(
 
 type NotificationPrefsInput = {
   push_enabled: boolean;
-  daily_reminder_enabled?: boolean;
-  rating_completion_enabled?: boolean;
-  achievement_notification_enabled?: boolean;
 };
 
 export async function updateNotificationPreferencesAction(
@@ -166,28 +179,37 @@ export async function updateNotificationPreferencesAction(
     return { success: false, error: "Tidak terautentikasi." };
   }
 
-  // Only pass columns existing in database table notification_preferences: user_id, push_enabled, email_enabled
-  const { error } = await supabase
-    .from("notification_preferences")
-    .upsert(
-      {
-        user_id: user.id,
-        push_enabled: prefs.push_enabled,
-        email_enabled: false,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" },
-    );
+  const { data, error } = await supabase.rpc(
+    "update_my_notification_preference",
+    {
+      p_push_enabled: prefs.push_enabled,
+    },
+  );
 
   if (error) {
-    console.error("Failed to update notification preferences:", error.message);
+    console.error("Notification preference update failed", {
+      code: error.code ?? null,
+    });
     return {
       success: false,
       error: "Gagal memperbarui preferensi notifikasi.",
     };
   }
 
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    Array.isArray(data) ||
+    data.success !== true
+  ) {
+    return {
+      success: false,
+      error: "Preferensi notifikasi tidak dapat disimpan.",
+    };
+  }
+
   revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/notifications");
 
   return { success: true };
 }

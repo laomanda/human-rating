@@ -62,47 +62,37 @@ function ToggleItem({
   );
 }
 
-const DEFAULT_PREFS: SettingsNotificationPreferences = {
-  id: "",
-  user_id: "",
-  push_enabled: true,
-  email_enabled: false,
-  daily_reminder_enabled: true,
-  rating_completion_enabled: true,
-  achievement_notification_enabled: true,
-};
-
 export function NotificationSettings({
   preferences,
 }: NotificationSettingsProps) {
   const [isPending, startTransition] = useTransition();
-  const [prefs, setPrefs] = useState<SettingsNotificationPreferences>(
-    preferences ?? DEFAULT_PREFS,
+  const [pushEnabled, setPushEnabled] = useState(
+    preferences?.push_enabled ?? true,
   );
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleChange = (
-    key: keyof Omit<SettingsNotificationPreferences, "id" | "user_id">,
-    value: boolean,
-  ) => {
-    const next = { ...prefs, [key]: value };
-    setPrefs(next);
+  const handleChange = (value: boolean) => {
+    if (value === pushEnabled || isPending) {
+      return;
+    }
+
+    const previous = pushEnabled;
+    setPushEnabled(value);
     setSavedMessage(null);
+    setErrorMessage(null);
 
     startTransition(async () => {
       const result = await updateNotificationPreferencesAction({
-        push_enabled: next.push_enabled,
-        daily_reminder_enabled: next.daily_reminder_enabled,
-        rating_completion_enabled: next.rating_completion_enabled,
-        achievement_notification_enabled: next.achievement_notification_enabled,
+        push_enabled: value,
       });
 
       if (result.success) {
         setSavedMessage("Preferensi notifikasi disimpan.");
         setTimeout(() => setSavedMessage(null), 3000);
       } else {
-        // Revert optimistic update
-        setPrefs(prefs);
+        setPushEnabled(previous);
+        setErrorMessage(result.error);
       }
     });
   };
@@ -115,37 +105,10 @@ export function NotificationSettings({
       <div className="divide-y divide-white/5">
         <ToggleItem
           id="notif-push"
-          label="Push Notification"
-          description="Izinkan notifikasi browser dari HuMob."
-          checked={prefs.push_enabled}
-          onChange={(v) => handleChange("push_enabled", v)}
-          disabled={isPending}
-        />
-
-        <ToggleItem
-          id="notif-daily-reminder"
-          label="Pengingat Harian"
-          description="Ingatkan saya untuk mengisi rating setiap hari."
-          checked={prefs.daily_reminder_enabled}
-          onChange={(v) => handleChange("daily_reminder_enabled", v)}
-          disabled={isPending}
-        />
-
-        <ToggleItem
-          id="notif-rating-completion"
-          label="Rating Selesai"
-          description="Beritahu saya saat rating harian selesai diproses."
-          checked={prefs.rating_completion_enabled}
-          onChange={(v) => handleChange("rating_completion_enabled", v)}
-          disabled={isPending}
-        />
-
-        <ToggleItem
-          id="notif-achievement"
-          label="Pencapaian"
-          description="Beritahu saya saat mendapatkan badge atau pencapaian baru."
-          checked={prefs.achievement_notification_enabled}
-          onChange={(v) => handleChange("achievement_notification_enabled", v)}
+          label="Notifikasi Push"
+          description="Mengatur pengingat harian, rating selesai, dan achievement untuk semua perangkat aktif."
+          checked={pushEnabled}
+          onChange={handleChange}
           disabled={isPending}
         />
       </div>
@@ -156,6 +119,9 @@ export function NotificationSettings({
         )}
         {savedMessage && (
           <span className="text-emerald-400">{savedMessage}</span>
+        )}
+        {errorMessage && (
+          <span className="text-red-300">{errorMessage}</span>
         )}
       </div>
     </SettingsSection>

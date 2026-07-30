@@ -15,11 +15,17 @@ export function PrivacySettings({ profile }: PrivacySettingsProps) {
   const [isPending, startTransition] = useTransition();
   const [isPrivate, setIsPrivate] = useState(profile.is_private);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleChange = (value: boolean) => {
+    if (value === isPrivate || isPending) {
+      return;
+    }
+
     const prev = isPrivate;
     setIsPrivate(value);
     setSavedMessage(null);
+    setErrorMessage(null);
 
     startTransition(async () => {
       const result = await updatePrivacyAction(value);
@@ -31,6 +37,7 @@ export function PrivacySettings({ profile }: PrivacySettingsProps) {
         setTimeout(() => setSavedMessage(null), 3000);
       } else {
         setIsPrivate(prev);
+        setErrorMessage(result.error);
       }
     });
   };
@@ -100,6 +107,9 @@ export function PrivacySettings({ profile }: PrivacySettingsProps) {
         {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400" />}
         {savedMessage && (
           <span className="text-emerald-400">{savedMessage}</span>
+        )}
+        {errorMessage && (
+          <span className="text-red-300">{errorMessage}</span>
         )}
       </div>
     </SettingsSection>

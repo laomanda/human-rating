@@ -8,13 +8,8 @@ export type SettingsProfile = {
 };
 
 export type SettingsNotificationPreferences = {
-  id: string;
   user_id: string;
   push_enabled: boolean;
-  email_enabled: boolean;
-  daily_reminder_enabled: boolean;
-  rating_completion_enabled: boolean;
-  achievement_notification_enabled: boolean;
 };
 
 export type SettingsData = {
