@@ -49,6 +49,17 @@ export function AchievementList({
   available,
   emptyMessage = "Belum ada achievement yang terbuka.",
 }: AchievementListProps) {
+  const progressPercentage =
+    totalCount > 0
+      ? Math.min(
+          100,
+          Math.max(
+            0,
+            (unlockedCount / totalCount) * 100,
+          ),
+        )
+      : 0;
+
   if (!available) {
     return (
       <section
@@ -109,9 +120,28 @@ export function AchievementList({
           </div>
         </div>
 
-        <p className="text-sm text-zinc-500">
-          {unlockedCount}/{totalCount} terbuka
-        </p>
+        <div className="min-w-32">
+          <p className="text-right text-sm text-zinc-500">
+            {unlockedCount}/{totalCount} terbuka
+          </p>
+
+          <div
+            role="progressbar"
+            aria-label="Progress achievement"
+            aria-valuemin={0}
+            aria-valuemax={totalCount}
+            aria-valuenow={unlockedCount}
+            aria-valuetext={`${unlockedCount} dari ${totalCount} achievement terbuka`}
+            className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.06]"
+          >
+            <div
+              className="h-full rounded-full bg-emerald-400"
+              style={{
+                width: `${progressPercentage}%`,
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       {achievements.length > 0 ? (

@@ -13,7 +13,6 @@ type UnknownRecord = Record<string, unknown>;
 const ACHIEVEMENT_UNLOCK_SELECT = [
   "achievement_key",
   "unlocked_at",
-  "source_match_id",
 ].join(",");
 
 function asRecord(value: unknown): UnknownRecord | null {
@@ -53,9 +52,7 @@ function normalizeAchievementUnlock(
   return {
     achievement_key: achievementKey,
     unlocked_at: unlockedAt,
-    source_match_id: asString(
-      row.source_match_id,
-    ),
+    source_match_id: null,
   };
 }
 
@@ -158,7 +155,7 @@ export async function getAchievementCollection(
   userId: string,
 ): Promise<AchievementCollection> {
   const { data, error } = await supabase
-    .from("user_achievements")
+    .from("public_user_achievements")
     .select(ACHIEVEMENT_UNLOCK_SELECT)
     .eq("user_id", userId)
     .order("unlocked_at", {

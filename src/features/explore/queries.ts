@@ -13,6 +13,7 @@ import type {
   PublicProfileCardData,
   PublicProfileResult,
   PublicProfileSearchResult,
+  PublicRatingHistoryPoint,
 } from "@/features/explore/explore-types";
 
 const PUBLIC_PROFILE_SELECT = [
@@ -48,6 +49,7 @@ type PublicRatingSnapshot = {
   discipline: number | null;
   responsibility: number | null;
   overall: number | null;
+  createdAt: string | null;
 };
 
 function asRecord(value: unknown): UnknownRecord | null {
@@ -120,6 +122,7 @@ function normalizeRating(
       row.responsibility_rating,
     ),
     overall: toNullableNumber(row.overall_rating),
+    createdAt: asString(row.created_at),
   };
 }
 
@@ -145,42 +148,69 @@ function createPerformanceSummary(
   ratings: PublicRatingSnapshot[],
   totalRatedDays: number,
 ): PublicPerformanceSummary {
+  const averageEnergy = average(
+    ratings.map((rating) => rating.energy),
+  );
+  const averageFocus = average(
+    ratings.map((rating) => rating.focus),
+  );
+  const averageDiscipline = average(
+    ratings.map((rating) => rating.discipline),
+  );
+  const averageResponsibility = average(
+    ratings.map((rating) => rating.responsibility),
+  );
+
   const attributes: PublicProfileAttribute[] = [
     {
       key: "energy",
       label: "Energy",
-      value: average(
-        ratings.map((rating) => rating.energy),
-      ) ?? -1,
+      value: averageEnergy ?? -1,
     },
     {
       key: "focus",
       label: "Focus",
-      value: average(
-        ratings.map((rating) => rating.focus),
-      ) ?? -1,
+      value: averageFocus ?? -1,
     },
     {
       key: "discipline",
       label: "Discipline",
-      value: average(
-        ratings.map((rating) => rating.discipline),
-      ) ?? -1,
+      value: averageDiscipline ?? -1,
     },
     {
       key: "responsibility",
       label: "Responsibility",
-      value: average(
-        ratings.map(
-          (rating) => rating.responsibility,
-        ),
-      ) ?? -1,
+      value: averageResponsibility ?? -1,
     },
   ];
 
   const validAttributes = attributes.filter(
     (attribute) => attribute.value >= 0,
   );
+
+  const ratingHistory: PublicRatingHistoryPoint[] =
+    ratings
+      .flatMap((rating) => {
+        if (
+          rating.overall === null ||
+          !rating.createdAt ||
+          Number.isNaN(
+            new Date(rating.createdAt).getTime(),
+          )
+        ) {
+          return [];
+        }
+
+        return [
+          {
+            overallRating: rating.overall,
+            createdAt: rating.createdAt,
+          },
+        ];
+      })
+      .sort((first, second) =>
+        first.createdAt.localeCompare(second.createdAt),
+      );
 
   return {
     averageOverall: average(
@@ -198,7 +228,12 @@ function createPerformanceSummary(
       },
       null,
     ),
+    averageEnergy,
+    averageFocus,
+    averageDiscipline,
+    averageResponsibility,
     ratedDays: totalRatedDays,
+    sampledRatingCount: ratings.length,
     strongestAttribute:
       validAttributes.length > 0
         ? validAttributes.reduce(
@@ -208,6 +243,7 @@ function createPerformanceSummary(
                 : strongest,
           )
         : null,
+    ratingHistory,
   };
 }
 

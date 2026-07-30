@@ -12,10 +12,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AchievementList } from "@/features/achievement/achievement-list";
+import { DimensionProgress } from "@/features/dashboard/dimension-progress";
 import { formatScore } from "@/features/dashboard/formatters";
 import {
   getPublicProfile,
 } from "@/features/explore/queries";
+import { PublicRatingHistory } from "@/features/explore/public-rating-history";
 import { ProfileAvatar } from "@/features/profile/profile-avatar";
 
 import { createClient } from "@/lib/supabase/server";
@@ -90,6 +92,20 @@ export default async function PublicProfilePage({
   const profile = result.profile;
   const displayName =
     profile.displayName || profile.username;
+  const dimensionAggregate = {
+    averageOverall:
+      profile.performance.averageOverall,
+    averageEnergy:
+      profile.performance.averageEnergy,
+    averageFocus:
+      profile.performance.averageFocus,
+    averageDiscipline:
+      profile.performance.averageDiscipline,
+    averageResponsibility:
+      profile.performance.averageResponsibility,
+    ratingCount:
+      profile.performance.sampledRatingCount,
+  };
 
   return (
     <main className="min-h-screen bg-black px-5 py-8 text-white sm:px-8 sm:py-12">
@@ -147,18 +163,18 @@ export default async function PublicProfilePage({
             <PublicStatCard
               icon={<Gauge className="h-5 w-5" />}
               label="Rata-rata overall"
-              value={formatScore(
-                profile.performance.averageOverall,
-              )}
+              score={
+                profile.performance.averageOverall
+              }
               description="Dari rating terbaru yang tersedia"
             />
 
             <PublicStatCard
               icon={<Trophy className="h-5 w-5" />}
               label="Rating terbaik"
-              value={formatScore(
-                profile.performance.bestOverall,
-              )}
+              score={
+                profile.performance.bestOverall
+              }
               description="Nilai tertinggi pada ringkasan"
             />
 
@@ -168,16 +184,17 @@ export default async function PublicProfilePage({
               value={String(
                 profile.performance.ratedDays,
               )}
+              isUnavailable={false}
               description="Total rating final"
             />
 
             <PublicStatCard
               icon={<Sparkles className="h-5 w-5" />}
               label="Atribut terkuat"
-              value={formatScore(
+              score={
                 profile.performance.strongestAttribute?.value ??
-                  null,
-              )}
+                null
+              }
               description={
                 profile.performance.strongestAttribute
                   ?.label ?? "Belum ada data atribut"
@@ -185,6 +202,31 @@ export default async function PublicProfilePage({
             />
           </div>
         </section>
+
+        {profile.performance.ratedDays === 0 ? (
+          <section className="rounded-2xl border border-dashed border-white/10 bg-black/10 p-6 text-center">
+            <h2 className="font-medium text-zinc-300">
+              Belum ada rating final
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              Ringkasan dimensi dan perjalanan rating akan tersedia setelah rating final tersimpan.
+            </p>
+          </section>
+        ) : (
+          <section
+            aria-label="Detail performa publik"
+            className="grid gap-6 xl:grid-cols-2"
+          >
+            <DimensionProgress
+              aggregate={dimensionAggregate}
+            />
+
+            <PublicRatingHistory
+              history={profile.performance.ratingHistory}
+            />
+          </section>
+        )}
 
         <AchievementList
           title="Achievement Publik"
@@ -204,13 +246,28 @@ function PublicStatCard({
   icon,
   label,
   value,
+  score,
+  isUnavailable,
   description,
 }: {
   icon: ReactNode;
   label: string;
-  value: string;
+  value?: string;
+  score?: number | null;
+  isUnavailable?: boolean;
   description: string;
 }) {
+  const missingScore =
+    score === null || score === undefined;
+  const displayValue =
+    score === undefined
+      ? value ?? "Belum tersedia"
+      : missingScore
+        ? "Belum tersedia"
+        : formatScore(score);
+  const displayUnavailable =
+    isUnavailable ?? missingScore;
+
   return (
     <article className="rounded-2xl border border-app-border bg-app-surface p-5">
       <div className="text-zinc-500">{icon}</div>
@@ -219,8 +276,14 @@ function PublicStatCard({
         {label}
       </p>
 
-      <p className="mt-1 text-3xl font-semibold tracking-tight text-white">
-        {value}
+      <p
+        className={`mt-1 font-semibold tracking-tight text-white ${
+          displayUnavailable
+            ? "text-xl sm:text-2xl"
+            : "text-3xl"
+        }`}
+      >
+        {displayValue}
       </p>
 
       <p className="mt-3 text-xs leading-5 text-zinc-600">

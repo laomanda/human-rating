@@ -18,11 +18,22 @@ export type PublicProfileAttribute = {
   value: number;
 };
 
+export type PublicRatingHistoryPoint = {
+  overallRating: number;
+  createdAt: string;
+};
+
 export type PublicPerformanceSummary = {
   averageOverall: number | null;
   bestOverall: number | null;
+  averageEnergy: number | null;
+  averageFocus: number | null;
+  averageDiscipline: number | null;
+  averageResponsibility: number | null;
   ratedDays: number;
+  sampledRatingCount: number;
   strongestAttribute: PublicProfileAttribute | null;
+  ratingHistory: PublicRatingHistoryPoint[];
 };
 
 export type PublicProfile = PublicProfileCardData & {
