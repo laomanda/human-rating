@@ -236,13 +236,6 @@ export async function authenticateRequest(
     ) ?? undefined,
   );
 
-  console.log("JOB_SECRET_CHECK", {
-    expectedExists: Boolean(expectedJobSecret),
-    expectedLength: expectedJobSecret?.length ?? 0,
-    receivedExists: Boolean(receivedJobSecret),
-    receivedLength: receivedJobSecret?.length ?? 0,
-  });
-
   if (
     expectedJobSecret &&
     receivedJobSecret &&

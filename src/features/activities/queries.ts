@@ -356,7 +356,7 @@ function normalizeProductiveActivities(
     );
 }
 
-export async function ensureTodayDailyMatch(
+async function ensureTodayDailyMatch(
   supabase: SupabaseClient,
 ): Promise<DailyMatch | null> {
   const { data, error } = await supabase.rpc(

@@ -19,23 +19,6 @@ function assert(
   }
 }
 
-function printResult(
-  name: string,
-  result: unknown,
-) {
-  console.log("\n=================");
-  console.log(name);
-  console.log("=================");
-
-  console.log(
-    JSON.stringify(
-      result,
-      null,
-      2,
-    ),
-  );
-}
-
 function calculateOverall(
   score: ReturnType<typeof calculateLogicScores>,
 ) {
@@ -125,11 +108,6 @@ Deno.test(
         badDay,
       );
 
-    printResult(
-      "BAD DAY",
-      badScore,
-    );
-
     /*
     TEST 2
     Normal productive day
@@ -174,11 +152,6 @@ Deno.test(
       calculateLogicScores(
         normalDay,
       );
-
-    printResult(
-      "NORMAL DAY",
-      normalScore,
-    );
 
     /*
     TEST 3
@@ -269,13 +242,6 @@ Deno.test(
       calculateLogicScores(
         highDay,
       );
-
-
-    printResult(
-      "HIGH PERFORMANCE",
-      highScore,
-    );
-
 
     /*
     FAIRNESS CHECK

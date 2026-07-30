@@ -1,7 +1,6 @@
 import type {
   ActivityIntensity,
   DailyMatch,
-  DailyMatchStatus,
   PhysicalActivityType,
   ProductiveCategory,
 } from "@/features/activities/types";
@@ -44,18 +43,6 @@ const PRODUCTIVE_CATEGORY_LABELS: Record<
   other: "Other",
 };
 
-const DAILY_MATCH_STATUS_LABELS: Record<
-  DailyMatchStatus,
-  string
-> = {
-  open: "Open",
-  locked: "Locked",
-  queued: "Queued",
-  processing: "Processing",
-  rated: "Rated",
-  failed: "Failed",
-};
-
 type SupabaseErrorLike = {
   message: string;
   code?: string | null;
@@ -79,12 +66,6 @@ export function formatProductiveCategory(
   value: ProductiveCategory,
 ): string {
   return PRODUCTIVE_CATEGORY_LABELS[value];
-}
-
-export function formatDailyMatchStatus(
-  value: DailyMatchStatus,
-): string {
-  return DAILY_MATCH_STATUS_LABELS[value];
 }
 
 export function isDailyMatchEditable(

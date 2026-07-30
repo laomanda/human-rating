@@ -129,27 +129,6 @@ function buildAchievementCollection(
   };
 }
 
-export function getAchievementStatus(
-  collection: AchievementCollection,
-  key: AchievementKey,
-): boolean {
-  return collection.achievements.some(
-    (achievement) =>
-      achievement.key === key &&
-      achievement.unlocked,
-  );
-}
-
-export function getLatestUnlockedAchievements(
-  collection: AchievementCollection,
-  limit = 3,
-): AchievementState[] {
-  return collection.latestUnlocked.slice(
-    0,
-    limit,
-  );
-}
-
 export async function getAchievementCollection(
   supabase: SupabaseClient,
   userId: string,

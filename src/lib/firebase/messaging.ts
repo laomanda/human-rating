@@ -3,9 +3,7 @@ import {
   getMessaging,
   getToken,
   isSupported,
-  onMessage,
   type Messaging,
-  type MessagePayload,
 } from "firebase/messaging";
 
 import {
@@ -20,7 +18,7 @@ let messagingInstance: Messaging | null = null;
  * Returns the Firebase Messaging instance (singleton).
  * Returns `null` if the browser does not support FCM.
  */
-export async function getFirebaseMessaging(): Promise<Messaging | null> {
+async function getFirebaseMessaging(): Promise<Messaging | null> {
   if (messagingInstance) return messagingInstance;
 
   const supported = await isSupported();
@@ -122,17 +120,4 @@ export async function requestFcmToken(): Promise<FcmTokenResult> {
       error: rawMessage || "Gagal mengaktifkan push notification.",
     };
   }
-}
-
-/**
- * Registers a callback for foreground messages.
- * Returns an unsubscribe function.
- */
-export async function onForegroundMessage(
-  callback: (payload: MessagePayload) => void,
-): Promise<(() => void) | null> {
-  const messaging = await getFirebaseMessaging();
-  if (!messaging) return null;
-
-  return onMessage(messaging, callback);
 }

@@ -65,7 +65,7 @@ function formatSupabaseError(context: string, error: unknown): string {
   return `[Supabase ${context}] ${String(error)}`;
 }
 
-export function normalizeNotification(value: unknown): NotificationRow | null {
+function normalizeNotification(value: unknown): NotificationRow | null {
   const row = asRecord(value);
   if (!row) {
     return null;
