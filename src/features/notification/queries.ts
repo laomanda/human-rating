@@ -13,6 +13,7 @@ const NOTIFICATION_SELECT = `
   message,
   is_read,
   reference_id,
+  push_status,
   created_at
 `;
 
@@ -30,10 +31,6 @@ function asString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
-function asBoolean(value: unknown): boolean {
-  return value === true;
-}
-
 function normalizeNotificationType(value: unknown): NotificationType {
   const str = asString(value);
   if (
@@ -45,6 +42,23 @@ function normalizeNotificationType(value: unknown): NotificationType {
     return str;
   }
   return "system";
+}
+
+function formatSupabaseError(context: string, error: unknown): string {
+  if (typeof error === "object" && error !== null) {
+    const err = error as {
+      code?: string;
+      message?: string;
+      details?: string;
+      hint?: string;
+    };
+    const code = err.code ?? "UNKNOWN";
+    const message = err.message ?? String(error);
+    const details = err.details ?? "none";
+    const hint = err.hint ?? "none";
+    return `[Supabase ${context}] Code: ${code} | Message: ${message} | Details: ${details} | Hint: ${hint}`;
+  }
+  return `[Supabase ${context}] ${String(error)}`;
 }
 
 export function normalizeNotification(value: unknown): NotificationRow | null {
@@ -68,17 +82,23 @@ export function normalizeNotification(value: unknown): NotificationRow | null {
     type: normalizeNotificationType(row.type),
     title,
     message,
-    is_read: asBoolean(row.is_read),
+    is_read: row.is_read === true,
     reference_id: asString(row.reference_id),
+    push_status: asString(row.push_status) ?? "pending",
     created_at: asString(row.created_at) ?? new Date().toISOString(),
   };
 }
+
+export type GetNotificationsResult = {
+  notifications: NotificationRow[];
+  error: string | null;
+};
 
 export async function getNotifications(
   supabase: SupabaseClient,
   userId: string,
   limit = 50,
-): Promise<NotificationRow[]> {
+): Promise<GetNotificationsResult> {
   const { data, error } = await supabase
     .from("notifications")
     .select(NOTIFICATION_SELECT)
@@ -87,17 +107,23 @@ export async function getNotifications(
     .limit(limit);
 
   if (error) {
-    console.error("Failed to fetch notifications:", error.message);
-    return [];
+    const formattedLog = formatSupabaseError("getNotifications", error);
+    console.error(formattedLog);
+    return {
+      notifications: [],
+      error: "Gagal memuat notifikasi dari server. Silakan coba lagi.",
+    };
   }
 
   if (!Array.isArray(data)) {
-    return [];
+    return { notifications: [], error: null };
   }
 
-  return data
+  const notifications = data
     .map(normalizeNotification)
     .filter((item): item is NotificationRow => item !== null);
+
+  return { notifications, error: null };
 }
 
 export async function getUnreadNotificationCount(
@@ -111,7 +137,11 @@ export async function getUnreadNotificationCount(
     .eq("is_read", false);
 
   if (error) {
-    console.error("Failed to get unread notification count:", error.message);
+    const formattedLog = formatSupabaseError(
+      "getUnreadNotificationCount",
+      error,
+    );
+    console.error(formattedLog);
     return 0;
   }
 
@@ -123,14 +153,19 @@ export async function markNotificationAsRead(
   userId: string,
   notificationId: string,
 ): Promise<boolean> {
+  const nowIso = new Date().toISOString();
   const { error } = await supabase
     .from("notifications")
-    .update({ is_read: true })
+    .update({ read_at: nowIso })
     .eq("id", notificationId)
     .eq("user_id", userId);
 
   if (error) {
-    console.error("Failed to mark notification as read:", error.message);
+    const formattedLog = formatSupabaseError(
+      "markNotificationAsRead",
+      error,
+    );
+    console.error(formattedLog);
     return false;
   }
 
@@ -141,14 +176,19 @@ export async function markAllNotificationsAsRead(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<boolean> {
+  const nowIso = new Date().toISOString();
   const { error } = await supabase
     .from("notifications")
-    .update({ is_read: true })
+    .update({ read_at: nowIso })
     .eq("user_id", userId)
-    .eq("is_read", false);
+    .is("read_at", null);
 
   if (error) {
-    console.error("Failed to mark all notifications as read:", error.message);
+    const formattedLog = formatSupabaseError(
+      "markAllNotificationsAsRead",
+      error,
+    );
+    console.error(formattedLog);
     return false;
   }
 

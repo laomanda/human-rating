@@ -1,21 +1,58 @@
 /**
- * HuMob Service Worker — Foundation (Phase 7.3)
+ * HuMob Service Worker — Phase 7.4 (FCM Push Notification)
  *
  * Security constraints:
  * - NO caching of authenticated routes or API responses.
  * - NO caching of /dashboard/* or any dynamic data.
  * - ONLY static shell assets are pre-cached.
  * - Private data (auth tokens, user data) never touches cache storage.
- *
- * This SW is intentionally minimal to serve as a foundation for
- * future push notification integration (Phase 7.4) without
- * compromising security.
  */
 
-const CACHE_NAME = "humob-shell-v1";
+// Firebase Messaging SW — required for background push messages
+importScripts(
+  "https://www.gstatic.com/firebasejs/11.8.1/firebase-app-compat.js",
+);
+importScripts(
+  "https://www.gstatic.com/firebasejs/11.8.1/firebase-messaging-compat.js",
+);
 
-// Static public assets that are safe to cache.
-// Intentionally excludes /dashboard, /api, and any auth routes.
+// Initialize Firebase in the service worker context
+// These values are public client-side config (not secrets)
+firebase.initializeApp({
+  apiKey: "AIzaSyARiEwMCFa0e2mpV2qs36TivKVbV4DZo4A",
+  authDomain: "humob-252d3.firebaseapp.com",
+  projectId: "humob-252d3",
+  storageBucket: "humob-252d3.firebasestorage.app",
+  messagingSenderId: "30482499455",
+  appId: "1:30482499455:web:0f229cc28f0fa282edfc4a",
+});
+
+const messaging = firebase.messaging();
+
+// Handle background push messages from FCM
+messaging.onBackgroundMessage((payload) => {
+  const notificationTitle = payload.notification?.title || "HuMob";
+  const notificationOptions = {
+    body: payload.notification?.body || "",
+    icon: "/icon-192x192.png",
+    badge: "/icon-192x192.png",
+    tag: payload.data?.notification_id || "humob-default",
+    data: {
+      url: payload.data?.url || "/dashboard/notifications",
+      notificationId: payload.data?.notification_id || "",
+    },
+    vibrate: [100, 50, 100],
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// ============================================================
+// Static shell caching (preserved from Phase 7.3)
+// ============================================================
+
+const CACHE_NAME = "humob-shell-v2";
+
 const SHELL_ASSETS = ["/", "/login", "/icon-192x192.png", "/icon-512x512.png"];
 
 // Install: pre-cache shell assets
@@ -53,7 +90,7 @@ self.addEventListener("fetch", (event) => {
   // Skip non-GET requests entirely.
   if (request.method !== "GET") return;
 
-  // Skip cross-origin requests (Supabase, Google, CDNs).
+  // Skip cross-origin requests (Supabase, Google, Firebase, CDNs).
   if (url.origin !== self.location.origin) return;
 
   // Skip authenticated/dynamic routes — let the browser handle them normally.
@@ -71,11 +108,7 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(request)
       .then((networkResponse) => {
-        // Only cache successful responses for known shell assets.
-        if (
-          networkResponse.ok &&
-          SHELL_ASSETS.includes(url.pathname)
-        ) {
+        if (networkResponse.ok && SHELL_ASSETS.includes(url.pathname)) {
           const responseToCache = networkResponse.clone();
           caches
             .open(CACHE_NAME)
@@ -84,27 +117,28 @@ self.addEventListener("fetch", (event) => {
         return networkResponse;
       })
       .catch(() => {
-        // Network failed — try cache as last resort (shell assets only).
         return caches.match(request);
       }),
   );
 });
 
-// Push notification listener — ready for Phase 7.4 (FCM/VAPID).
-// Registered here as a no-op foundation so the SW lifecycle is stable.
-self.addEventListener("push", (_event) => {
-  // Phase 7.4: Implement FCM push notification handling here.
-});
-
-// Notification click — ready for Phase 7.4.
+// Notification click — navigate to the notification URL
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+
+  const targetUrl = event.notification.data?.url || "/dashboard/notifications";
+
   event.waitUntil(
-    clients.matchAll({ type: "window" }).then((clientList) => {
-      if (clientList.length > 0) {
-        return clientList[0].focus();
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Focus existing window if available
+      for (const client of clientList) {
+        if (client.url.includes("/dashboard") && "focus" in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
       }
-      return clients.openWindow("/dashboard");
+      // Open new window
+      return clients.openWindow(targetUrl);
     }),
   );
 });

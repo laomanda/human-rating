@@ -11,6 +11,7 @@ export type NotificationRow = {
   title: string;
   message: string;
   is_read: boolean;
-  reference_id?: string | null;
+  reference_id: string | null;
+  push_status: string;
   created_at: string;
 };

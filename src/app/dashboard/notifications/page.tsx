@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { NotificationList } from "@/features/notification/components/notification-list";
+import { PushPermission } from "@/features/notification/push-permission";
 import { getNotifications } from "@/features/notification/queries";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,7 +26,10 @@ export default async function NotificationsPage() {
     redirect("/login");
   }
 
-  const notifications = await getNotifications(supabase, user.id);
+  const { notifications, error: queryError } = await getNotifications(
+    supabase,
+    user.id,
+  );
 
   return (
     <div className="space-y-6">
@@ -47,7 +51,12 @@ export default async function NotificationsPage() {
         </div>
       </section>
 
-      <NotificationList initialNotifications={notifications} />
+      <PushPermission />
+
+      <NotificationList
+        initialNotifications={notifications}
+        queryError={queryError}
+      />
     </div>
   );
 }

@@ -21,28 +21,22 @@ type BeforeInstallPromptEvent = Event & {
 export function PwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(true); // default true = hide
+  const [isIOS] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !("MSStream" in window);
+  });
+  const [isStandalone] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      ("standalone" in navigator &&
+        (navigator as Navigator & { standalone?: boolean }).standalone === true)
+    );
+  });
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    // Detect standalone (already installed)
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      ("standalone" in navigator &&
-        (navigator as Navigator & { standalone?: boolean }).standalone ===
-          true);
-
-    if (standalone) {
-      setIsStandalone(true);
-      return;
-    }
-
-    setIsStandalone(false);
-
-    // Detect iOS
-    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !("MSStream" in window);
-    setIsIOS(ios);
+    if (isStandalone) return;
 
     // Intercept Chrome/Android install prompt
     const handler = (e: Event) => {
@@ -52,7 +46,7 @@ export function PwaInstallPrompt() {
 
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
+  }, [isStandalone]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;

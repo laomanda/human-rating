@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCheck } from "lucide-react";
+import { AlertCircle, CheckCheck } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { markAllAsReadAction } from "@/features/notification/actions";
@@ -10,15 +10,29 @@ import type { NotificationRow } from "@/features/notification/types";
 
 type NotificationListProps = {
   initialNotifications: NotificationRow[];
+  queryError?: string | null;
 };
 
 export function NotificationList({
   initialNotifications,
+  queryError,
 }: NotificationListProps) {
   const [notifications, setNotifications] = useState<NotificationRow[]>(
     initialNotifications,
   );
   const [isPending, startTransition] = useTransition();
+
+  if (queryError) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/5 p-8 text-center">
+        <AlertCircle className="h-8 w-8 text-red-400" aria-hidden="true" />
+        <h3 className="mt-3 text-base font-semibold text-white">
+          Layanan Notifikasi Tidak Tersedia
+        </h3>
+        <p className="mt-1 max-w-md text-xs text-zinc-400">{queryError}</p>
+      </div>
+    );
+  }
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 

@@ -11,6 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#08090c",
     orientation: "portrait-primary",
     categories: ["health", "lifestyle", "productivity"],
+    // @ts-expect-error - Required by older browsers/Chrome for FCM Web Push
+    gcm_sender_id: "103953800507",
     icons: [
       {
         src: "/icon-192x192.png",
