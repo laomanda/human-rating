@@ -5,10 +5,7 @@
  * via the Firebase Cloud Messaging HTTP v1 API.
  */
 
-import {
-  getAccessToken,
-  getProjectId,
-} from "./google-auth.ts";
+import { getAccessToken, getProjectId } from "./google-auth.ts";
 
 export type FcmPayload = {
   title: string;
@@ -21,9 +18,24 @@ export type FcmPayload = {
 export type FcmSendResult = {
   token: string;
   success: boolean;
+  messageId?: string;
   error?: string;
   shouldDeactivate?: boolean;
 };
+
+function responseMessageId(body: unknown): string | undefined {
+  if (
+    body !== null &&
+    typeof body === "object" &&
+    "name" in body &&
+    typeof body.name === "string" &&
+    body.name.trim() !== ""
+  ) {
+    return body.name;
+  }
+
+  return undefined;
+}
 
 /**
  * Sends a push notification to a single FCM token.
@@ -37,7 +49,8 @@ export async function sendToToken(
     const accessToken = await getAccessToken(serviceAccountJson);
     const projectId = getProjectId(serviceAccountJson);
 
-    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+    const fcmUrl =
+      `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
 
     const message = {
       message: {
@@ -73,12 +86,31 @@ export async function sendToToken(
       body: JSON.stringify(message),
     });
 
+    const responseBody: unknown = await response.json().catch(() => null);
+
     if (response.ok) {
-      return { token, success: true };
+      return {
+        token,
+        success: true,
+        messageId: responseMessageId(responseBody),
+      };
     }
 
-    const errorBody = await response.json().catch(() => ({}));
-    const errorCode = errorBody?.error?.details?.[0]?.errorCode || "";
+    const errorBody = responseBody;
+    const errorCode = errorBody !== null &&
+        typeof errorBody === "object" &&
+        "error" in errorBody &&
+        errorBody.error !== null &&
+        typeof errorBody.error === "object" &&
+        "details" in errorBody.error &&
+        Array.isArray(errorBody.error.details)
+      ? errorBody.error.details.find((detail) =>
+        detail !== null &&
+        typeof detail === "object" &&
+        "errorCode" in detail &&
+        typeof detail.errorCode === "string"
+      )?.errorCode ?? ""
+      : "";
 
     // Token is invalid or unregistered — should be deactivated
     const deactivateCodes = [
@@ -87,15 +119,14 @@ export async function sendToToken(
       "NOT_FOUND",
     ];
 
-    const shouldDeactivate =
-      deactivateCodes.includes(errorCode) ||
+    const shouldDeactivate = deactivateCodes.includes(errorCode) ||
       response.status === 404 ||
       response.status === 400;
 
     return {
       token,
       success: false,
-      error: `FCM error ${response.status}: ${JSON.stringify(errorBody)}`,
+      error: `FCM error ${response.status}`,
       shouldDeactivate,
     };
   } catch (err) {
@@ -117,9 +148,7 @@ export async function sendToTokens(
   payload: FcmPayload,
 ): Promise<FcmSendResult[]> {
   const results = await Promise.allSettled(
-    tokens.map((token) =>
-      sendToToken(serviceAccountJson, token, payload),
-    ),
+    tokens.map((token) => sendToToken(serviceAccountJson, token, payload)),
   );
 
   return results.map((result, index) => {

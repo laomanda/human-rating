@@ -434,3 +434,7 @@ verify_jwt = false
 # the function authenticates requests using x-humob-job-secret.
 [functions.queue-daily-ratings]
 verify_jwt = false
+
+# Called only by the database trigger and protected by x-humob-push-secret.
+[functions.send-push-notification]
+verify_jwt = false

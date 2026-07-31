@@ -1,41 +1,153 @@
 /**
  * HuMob Edge Function: send-push-notification
  *
- * Called by the pg_net database trigger when a new notification is inserted.
- * Fetches the notification row, checks user preferences, retrieves active
- * device tokens, and sends FCM push notifications via the HTTP v1 API.
- *
- * Required secrets:
- * - FCM_SERVICE_ACCOUNT_JSON — Google service account key (JSON string)
- *
- * Available environment variables (auto-set by Supabase):
- * - SUPABASE_URL
- * - SUPABASE_SERVICE_ROLE_KEY
+ * Invoked by the notifications database trigger through pg_net. The request
+ * carries only a notification id; the owning user is always read from the row.
  */
 
-import { createClient } from "@supabase/supabase-js";
-
-import {
-  sendToTokens,
-  type FcmPayload,
-} from "../_shared/fcm/fcm-sender.ts";
+import { createAdminClient } from "../_shared/rating/database.ts";
+import { timingSafeEqual } from "../_shared/rating/utils.ts";
+import { type FcmPayload, sendToTokens } from "../_shared/fcm/fcm-sender.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-humob-push-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-function jsonResponse(body: unknown, status = 200): Response {
+type NotificationType =
+  | "daily_match_morning"
+  | "daily_match_afternoon"
+  | "daily_match_evening"
+  | "daily_match_last_warning"
+  | "rating_ready"
+  | "achievement"
+  | "rating_delayed"
+  | "account_deletion";
+
+type DeliveryStatus = "pending" | "sent" | "failed" | "skipped";
+
+type NotificationRow = {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  delivery_status: DeliveryStatus;
+  scheduled_for: string | null;
+};
+
+type NotificationPreferences = {
+  push_enabled: boolean;
+  morning_reminder_enabled: boolean;
+  afternoon_reminder_enabled: boolean;
+  evening_reminder_enabled: boolean;
+  final_reminder_enabled: boolean;
+  rating_ready_enabled: boolean;
+  achievement_enabled: boolean;
+};
+
+type DeviceToken = {
+  token: string;
+};
+
+function jsonResponse(body: Record<string, string>, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
+function normalizedSecret(value: string | null | undefined): string | null {
+  const normalized = value?.trim() ?? "";
+  return normalized === "" ? null : normalized;
+}
+
+function isAuthorized(req: Request): boolean {
+  const expected = normalizedSecret(Deno.env.get("HUMOB_RATING_JOB_SECRET"));
+  const received = normalizedSecret(req.headers.get("x-humob-push-secret"));
+
+  return Boolean(expected && received && timingSafeEqual(expected, received));
+}
+
+function notificationAllowsPush(
+  type: NotificationType,
+  preferences: NotificationPreferences | null,
+): boolean {
+  if (!preferences) {
+    return true;
+  }
+
+  if (!preferences.push_enabled) {
+    return false;
+  }
+
+  switch (type) {
+    case "daily_match_morning":
+      return preferences.morning_reminder_enabled;
+    case "daily_match_afternoon":
+      return preferences.afternoon_reminder_enabled;
+    case "daily_match_evening":
+      return preferences.evening_reminder_enabled;
+    case "daily_match_last_warning":
+      return preferences.final_reminder_enabled;
+    case "rating_ready":
+      return preferences.rating_ready_enabled;
+    case "achievement":
+      return preferences.achievement_enabled;
+    default:
+      return true;
+  }
+}
+
+function isFutureSchedule(scheduledFor: string | null): boolean {
+  if (!scheduledFor) {
+    return false;
+  }
+
+  const scheduledAt = new Date(scheduledFor).getTime();
+  return Number.isFinite(scheduledAt) && scheduledAt > Date.now();
+}
+
+async function updateDeliveryStatus(
+  supabase: ReturnType<typeof createAdminClient>,
+  notificationId: string,
+  status: DeliveryStatus,
+  fields: {
+    sent_at?: string;
+    fcm_message_id?: string | null;
+    error_message?: string | null;
+  } = {},
+): Promise<void> {
+  const { error } = await supabase
+    .from("notifications")
+    .update({ delivery_status: status, ...fields })
+    .eq("id", notificationId);
+
+  if (error) {
+    console.error("Notification delivery status update failed", {
+      notificationId,
+      code: error.code ?? null,
+    });
+  }
+}
+
+function notificationIdFromBody(body: unknown): string | null {
+  if (
+    body !== null &&
+    typeof body === "object" &&
+    "notification_id" in body &&
+    typeof body.notification_id === "string" &&
+    body.notification_id.trim() !== ""
+  ) {
+    return body.notification_id;
+  }
+
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -44,95 +156,114 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
+  if (!isAuthorized(req)) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
+  }
+
+  let body: unknown;
   try {
-    // 1. Parse request body
-    const body = await req.json();
-    const notificationId = body.notification_id;
-    const userId = body.user_id;
+    body = await req.json();
+  } catch {
+    return jsonResponse({ error: "Invalid request" }, 400);
+  }
 
-    if (!notificationId || !userId) {
-      return jsonResponse(
-        { error: "Missing notification_id or user_id" },
-        400,
-      );
-    }
+  const notificationId = notificationIdFromBody(body);
+  if (!notificationId) {
+    return jsonResponse({ error: "Invalid request" }, 400);
+  }
 
-    // 2. Get service account key
-    const serviceAccountJson = Deno.env.get("FCM_SERVICE_ACCOUNT_JSON");
-    if (!serviceAccountJson) {
-      console.error("FCM_SERVICE_ACCOUNT_JSON not configured");
-      return jsonResponse(
-        { error: "FCM not configured" },
-        500,
-      );
-    }
+  let supabase: ReturnType<typeof createAdminClient>;
+  try {
+    supabase = createAdminClient();
+  } catch {
+    console.error("Notification delivery environment is incomplete");
+    return jsonResponse({ error: "Delivery unavailable" }, 500);
+  }
 
-    // 3. Create admin Supabase client (service role)
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseServiceKey =
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // 4. Fetch the notification row
-    const { data: notification, error: notifError } = await supabase
+  try {
+    const { data, error } = await supabase
       .from("notifications")
-      .select("id, user_id, type, title, message, push_status")
+      .select(
+        "id, user_id, type, title, message, delivery_status, scheduled_for",
+      )
       .eq("id", notificationId)
-      .single();
+      .maybeSingle();
 
-    if (notifError || !notification) {
-      console.error("Notification not found:", notifError?.message);
-      return jsonResponse({ error: "Notification not found" }, 404);
-    }
-
-    // Skip if already processed
-    if (notification.push_status === "sent" || notification.push_status === "skipped") {
-      return jsonResponse({
-        status: "already_processed",
-        push_status: notification.push_status,
+    const notification = data as NotificationRow | null;
+    if (error || !notification) {
+      console.error("Notification lookup failed", {
+        notificationId,
+        code: error?.code ?? null,
       });
+      return jsonResponse({ error: "Notification unavailable" }, 404);
     }
 
-    // 5. Check user push preference
-    const { data: prefs } = await supabase
+    if (
+      notification.delivery_status === "sent" ||
+      notification.delivery_status === "skipped"
+    ) {
+      return jsonResponse({ status: "already_processed" });
+    }
+
+    if (isFutureSchedule(notification.scheduled_for)) {
+      return jsonResponse({ status: "scheduled" });
+    }
+
+    const { data: preferencesData } = await supabase
       .from("notification_preferences")
-      .select("push_enabled")
-      .eq("user_id", userId)
-      .single();
+      .select(
+        "push_enabled, morning_reminder_enabled, afternoon_reminder_enabled, evening_reminder_enabled, final_reminder_enabled, rating_ready_enabled, achievement_enabled",
+      )
+      .eq("user_id", notification.user_id)
+      .maybeSingle();
 
-    // Default to true if no preference row
-    const pushEnabled = prefs?.push_enabled ?? true;
-
-    if (!pushEnabled) {
-      await supabase
-        .from("notifications")
-        .update({ push_status: "skipped" })
-        .eq("id", notificationId);
-
-      return jsonResponse({ status: "skipped", reason: "push_disabled" });
+    const preferences = preferencesData as NotificationPreferences | null;
+    if (!notificationAllowsPush(notification.type, preferences)) {
+      await updateDeliveryStatus(
+        supabase,
+        notification.id,
+        "skipped",
+        {
+          sent_at: new Date().toISOString(),
+          error_message: "PUSH_DISABLED",
+        },
+      );
+      return jsonResponse({ status: "skipped" });
     }
 
-    // 6. Fetch active device tokens for the user
-    const { data: tokens, error: tokensError } = await supabase
+    const { data: tokensData, error: tokensError } = await supabase
       .from("device_tokens")
       .select("token")
-      .eq("user_id", userId)
+      .eq("user_id", notification.user_id)
       .eq("is_active", true);
 
-    if (tokensError || !tokens || tokens.length === 0) {
-      await supabase
-        .from("notifications")
-        .update({ push_status: "skipped" })
-        .eq("id", notificationId);
-
-      return jsonResponse({
-        status: "skipped",
-        reason: "no_active_tokens",
-      });
+    const tokens = (tokensData ?? []) as DeviceToken[];
+    if (tokensError || tokens.length === 0) {
+      await updateDeliveryStatus(
+        supabase,
+        notification.id,
+        "skipped",
+        {
+          sent_at: new Date().toISOString(),
+          error_message: "NO_ACTIVE_DEVICE_TOKENS",
+        },
+      );
+      return jsonResponse({ status: "skipped" });
     }
 
-    // 7. Build FCM payload
+    const serviceAccountJson = normalizedSecret(
+      Deno.env.get("FCM_SERVICE_ACCOUNT_JSON"),
+    );
+    if (!serviceAccountJson) {
+      await updateDeliveryStatus(
+        supabase,
+        notification.id,
+        "failed",
+        { error_message: "FCM_NOT_CONFIGURED" },
+      );
+      return jsonResponse({ error: "Delivery unavailable" }, 500);
+    }
+
     const payload: FcmPayload = {
       title: notification.title,
       body: notification.message,
@@ -141,57 +272,68 @@ Deno.serve(async (req: Request) => {
       notificationId: notification.id,
     };
 
-    // 8. Send push to all active tokens
-    const tokenStrings = tokens.map(
-      (t: { token: string }) => t.token,
-    );
-
+    const tokenStrings = tokens.map(({ token }) => token);
     const results = await sendToTokens(
       serviceAccountJson,
       tokenStrings,
       payload,
     );
-
-    // 9. Deactivate stale tokens
     const staleTokens = results
-      .filter((r) => r.shouldDeactivate)
-      .map((r) => r.token);
+      .filter((result) => result.shouldDeactivate)
+      .map((result) => result.token);
 
     if (staleTokens.length > 0) {
-      for (const staleToken of staleTokens) {
-        await supabase
-          .from("device_tokens")
-          .update({
-            is_active: false,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("token", staleToken);
+      const { error: deactivateError } = await supabase
+        .from("device_tokens")
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString(),
+        })
+        .in("token", staleTokens)
+        .eq("user_id", notification.user_id);
+
+      if (deactivateError) {
+        console.error("Stale device tokens could not be deactivated", {
+          notificationId,
+          code: deactivateError.code ?? null,
+        });
       }
     }
 
-    // 10. Update push status
-    const anySuccess = results.some((r) => r.success);
-    await supabase
-      .from("notifications")
-      .update({
-        push_status: anySuccess ? "sent" : "failed",
-      })
-      .eq("id", notificationId);
+    const successfulResult = results.find((result) => result.success);
+    if (!successfulResult) {
+      await updateDeliveryStatus(
+        supabase,
+        notification.id,
+        "failed",
+        { error_message: "FCM_DELIVERY_FAILED" },
+      );
+      return jsonResponse({ status: "failed" }, 502);
+    }
 
-    return jsonResponse({
-      status: anySuccess ? "sent" : "failed",
-      total_tokens: tokenStrings.length,
-      successful: results.filter((r) => r.success).length,
-      failed: results.filter((r) => !r.success).length,
-      stale_deactivated: staleTokens.length,
-    });
-  } catch (err) {
-    console.error("send-push-notification error:", err);
-    return jsonResponse(
+    await updateDeliveryStatus(
+      supabase,
+      notification.id,
+      "sent",
       {
-        error: err instanceof Error ? err.message : "Internal error",
+        sent_at: new Date().toISOString(),
+        fcm_message_id: successfulResult.messageId ?? null,
+        error_message: null,
       },
-      500,
     );
+
+    return jsonResponse({ status: "sent" });
+  } catch (error) {
+    console.error("Notification delivery failed", {
+      notificationId,
+      message: error instanceof Error ? error.message : "unknown",
+    });
+    await updateDeliveryStatus(
+      supabase,
+      notificationId,
+      "failed",
+      { error_message: "PUSH_DELIVERY_FAILED" },
+    );
+    return jsonResponse({ error: "Delivery failed" }, 500);
   }
 });
