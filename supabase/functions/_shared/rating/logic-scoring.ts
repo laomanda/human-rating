@@ -46,6 +46,9 @@ const SPECIFIC_DELIVERABLE_PATTERN =
 const BASIC_CONTEXT_PATTERN =
   /\b(?:deadline|kuliah|kewajiban|meeting|pekerjaan|tugas)\b/iu;
 
+const RESPONSIBILITY_EVIDENCE_PATTERN =
+  /\b(?:tugas|kewajiban|deadline|pekerjaan|project|proyek|laporan|revisi|client|target|menyelesaikan|selesai|mengerjakan|membuat|memperbaiki|mengirim|follow\s*up|meeting)\b/iu;
+
 const NUMERIC_DETAIL_PATTERN =
   /\b\d+(?:[.,]\d+)?\b/u;
 
@@ -514,6 +517,24 @@ function scoreFocus(
  * ============================================================
  */
 
+function hasResponsibilityEvidence(
+  activity: ProductiveActivityRow,
+): boolean {
+  const text = [
+    activity.title,
+    activity.description,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .normalize("NFKC");
+
+  if (!text) {
+    return false;
+  }
+
+  return RESPONSIBILITY_EVIDENCE_PATTERN.test(text);
+}
+
 function responsibilityCompletionRatio(
   responsibilities: Array<
     AssessedRow<ResponsibilityRow>
@@ -581,6 +602,10 @@ function scoreResponsibility(
     AssessedRow<ResponsibilityRow>
   >,
 
+  productive: Array<
+    AssessedRow<ProductiveActivityRow>
+  >,
+
   other: Array<
     AssessedRow<OtherActivityRow>
   >,
@@ -598,6 +623,44 @@ function scoreResponsibility(
       ? null
       : completionRatio * 10;
 
+  const productiveEvidenceScore =
+    productive.length === 0
+      ? null
+      : round1(
+        clamp(
+          average(
+            productive.flatMap(
+              ({ row, assessment }) => {
+                if (
+                  !hasResponsibilityEvidence(
+                    row,
+                  )
+                ) {
+                  return [];
+                }
+
+                return [
+                  clamp(
+                    1.5 +
+                      assessment.qualityScore *
+                      1.3 +
+                      evidenceStrength(
+                        row.title,
+                        row.description,
+                      ) *
+                      2.6,
+                    0,
+                    7.5,
+                  ),
+                ];
+              },
+            ),
+          ),
+          0,
+          7.5,
+        ),
+      );
+
   const otherScore =
     scoreOtherEvidence(other);
 
@@ -614,7 +677,18 @@ function scoreResponsibility(
               responsibilityScore ===
                 null
                 ? 0
-                : 0.9,
+                : 0.8,
+          },
+          {
+            score:
+              productiveEvidenceScore ??
+              0,
+
+            weight:
+              productiveEvidenceScore ===
+                null
+                ? 0
+                : 0.15,
           },
           {
             score:
@@ -623,7 +697,7 @@ function scoreResponsibility(
             weight:
               otherScore === null
                 ? 0
-                : 0.1,
+                : 0.05,
           },
         ]),
       ),
@@ -715,6 +789,11 @@ export function calculateLogicScores(
     ),
   };
 
+  const productiveResponsibilityEvidence =
+    productive.filter(({ row }) =>
+      hasResponsibilityEvidence(row),
+    );
+
   const hasData = {
     energy:
       integrity.sleepAccepted ||
@@ -734,13 +813,24 @@ export function calculateLogicScores(
     responsibility:
       responsibilities.length > 0 ||
       otherByAttribute
-        .responsibility.length > 0,
+        .responsibility.length > 0 ||
+      productiveResponsibilityEvidence
+        .length > 0,
   };
 
   const validationFlags: string[] = [
     LOGIC_RULESET_VERSION,
     ...integrity.validationFlags,
   ];
+
+  if (
+    productiveResponsibilityEvidence.length >
+    0
+  ) {
+    validationFlags.push(
+      "productive_activity_used_as_responsibility_evidence",
+    );
+  }
 
   if (
     input.dailyMatch
@@ -842,6 +932,7 @@ export function calculateLogicScores(
     hasData.responsibility
       ? scoreResponsibility(
         responsibilities,
+        productiveResponsibilityEvidence,
         otherByAttribute
           .responsibility,
       )
@@ -1107,7 +1198,9 @@ export function calculateLogicScores(
       responsibilityEvidenceCount:
         responsibilities.length +
         otherByAttribute
-          .responsibility.length,
+          .responsibility.length +
+        productiveResponsibilityEvidence
+          .length,
 
       responsibilityCompletionRatio:
         responsibilityResult

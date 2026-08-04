@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { getCurrentNavigationItem } from "@/components/app-shell/navigation-config";
 import { getUnreadNotificationCount } from "@/features/notification/queries";
 import { createClient } from "@/lib/supabase/client";
+import { APP_CONFIG } from "@/shared";
 
 type AppHeaderProps = {
   pathname: string;
@@ -16,7 +17,7 @@ export function AppHeader({ pathname }: AppHeaderProps) {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const currentItem = getCurrentNavigationItem(pathname);
 
-  const pageTitle = currentItem?.label ?? "HuMob";
+  const pageTitle = currentItem?.label ?? APP_CONFIG.name;
 
   useEffect(() => {
     let isMounted = true;

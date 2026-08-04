@@ -3,13 +3,11 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
-
 import {
     APP_NAVIGATION,
     isNavigationItemActive,
 } from "@/components/app-shell/navigation-config";
-
-import { cn } from "@/lib/utils/cn";
+import { cn } from "@/shared";
 
 type AppSidebarProps = {
     pathname: string;

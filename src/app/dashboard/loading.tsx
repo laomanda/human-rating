@@ -1,28 +1,14 @@
 export default function DashboardLoading() {
   return (
-    <main className="min-h-screen bg-black px-6 py-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="h-28 animate-pulse rounded-2xl border border-white/10 bg-zinc-950" />
+    <main className="flex min-h-[60vh] items-center justify-center px-6 py-10">
+      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center shadow-lg shadow-black/20">
+        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-40 animate-pulse rounded-2xl border border-white/10 bg-zinc-950"
-            />
-          ))}
-        </div>
+        <h2 className="text-lg font-semibold text-white">Memuat dashboard</h2>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          {Array.from({ length: 2 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-80 animate-pulse rounded-2xl border border-white/10 bg-zinc-950"
-            />
-          ))}
-        </div>
-
-        <div className="h-80 animate-pulse rounded-2xl border border-white/10 bg-zinc-950" />
+        <p className="mt-2 text-sm text-zinc-400">
+          Sedang memeriksa akses Anda dan menyiapkan area dashboard.
+        </p>
       </div>
     </main>
   );

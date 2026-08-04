@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { FeatureCard } from "@/components/marketing/feature-card";
+
 export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-1 flex-col items-center justify-center overflow-hidden p-6 md:p-24">
@@ -94,29 +96,5 @@ export default function Home() {
         </motion.div>
       </motion.div>
     </main>
-  );
-}
-
-function FeatureCard({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="group rounded-2xl border border-white/5 bg-white/[0.02] p-6 backdrop-blur-sm transition-colors hover:bg-white/[0.04]">
-      <div className="mb-4 text-white/40 transition-colors group-hover:text-white">
-        {icon}
-      </div>
-
-      <h2 className="mb-2 text-lg font-medium text-white">{title}</h2>
-
-      <p className="text-sm leading-relaxed text-zinc-400">
-        {description}
-      </p>
-    </div>
   );
 }

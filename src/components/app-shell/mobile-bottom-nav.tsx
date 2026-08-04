@@ -4,8 +4,7 @@ import {
   APP_NAVIGATION,
   isNavigationItemActive,
 } from "@/components/app-shell/navigation-config";
-
-import { cn } from "@/lib/utils/cn";
+import { cn } from "@/shared";
 
 type MobileBottomNavigationProps = {
   pathname: string;

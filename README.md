@@ -10,6 +10,19 @@
 
 </p>
 
+## 🧱 Struktur proyek
+
+- src/app: route dan layout aplikasi Next.js
+- src/components: komponen UI yang dapat dipakai ulang
+- src/features: modul fitur bisnis seperti dashboard, profile, notification, dan settings
+- src/lib: integrasi teknis dan utilitas rendah level
+- src/shared: konfigurasi aplikasi dan helper bersama lintas fitur
+
+## ▶️ Perintah utama
+
+- npm run dev
+- npm run build
+- npm run lint
 
 # 🧠 About HuMob
 
