@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import {
   BatteryCharging,
   CheckCircle2,
-  ClipboardCheck,
   Focus,
   Layers3,
 } from "lucide-react";
@@ -56,11 +55,6 @@ export function DimensionProgress({
       label: "Discipline",
       value: aggregate.averageDiscipline,
       icon: <CheckCircle2 className="h-4 w-4" />,
-    },
-    {
-      label: "Responsibility",
-      value: aggregate.averageResponsibility,
-      icon: <ClipboardCheck className="h-4 w-4" />,
     },
   ];
 

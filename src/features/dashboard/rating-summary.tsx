@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import {
   BatteryCharging,
   CheckCircle2,
-  ClipboardCheck,
   Focus,
   Gauge,
 } from "lucide-react";
@@ -18,7 +17,6 @@ type RatingSummaryProps = {
   energy_rating: number | null;
   focus_rating: number | null;
   discipline_rating: number | null;
-  responsibility_rating: number | null;
   source: string | null;
   status: string | null;
 };
@@ -54,7 +52,6 @@ export function RatingSummary({
   energy_rating,
   focus_rating,
   discipline_rating,
-  responsibility_rating,
   source,
   status,
 }: RatingSummaryProps) {
@@ -76,13 +73,6 @@ export function RatingSummary({
       value: discipline_rating,
       icon: (
         <CheckCircle2 className="h-5 w-5" />
-      ),
-    },
-    {
-      label: "Responsibility",
-      value: responsibility_rating,
-      icon: (
-        <ClipboardCheck className="h-5 w-5" />
       ),
     },
   ];
@@ -130,7 +120,7 @@ export function RatingSummary({
           </div>
         </div>
 
-        <div className="grid w-full gap-3 sm:grid-cols-2 lg:max-w-2xl">
+        <div className="grid w-full gap-3 sm:grid-cols-3 lg:max-w-2xl">
           {dimensions.map((dimension) => (
             <DimensionCard
               key={dimension.label}

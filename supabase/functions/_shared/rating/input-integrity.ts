@@ -971,61 +971,7 @@ function assessProductiveActivities(
   );
 }
 
-function assessResponsibilities(
-  input: CanonicalRatingInput,
-): EvidenceAssessment[] {
-  const seenKeys =
-    new Set<string>();
 
-  return input.responsibilities.map(
-    (responsibility) => {
-      const description =
-        analyzeTextQuality(
-          responsibility.description,
-        );
-
-      const accepted =
-        description.accepted;
-
-      const qualityScore =
-        accepted
-          ? round1(
-              clamp(
-                0.4 +
-                  description
-                    .qualityScore *
-                    0.6,
-                0,
-                1,
-              ),
-            )
-          : 0;
-
-      const assessment:
-        EvidenceAssessment = {
-        id: responsibility.id,
-        kind: "responsibility",
-        accepted,
-        qualityScore,
-        flags: description.flags,
-      };
-
-      return duplicateAwareAssessment(
-        assessment,
-
-        createDuplicateKey(
-          responsibility.category,
-          responsibility.description,
-          responsibility
-            .execution_status,
-          responsibility.importance,
-        ),
-
-        seenKeys,
-      );
-    },
-  );
-}
 
 function assessOtherActivities(
   input: CanonicalRatingInput,
@@ -1103,7 +1049,7 @@ function acceptedIdSet(
       )
       .map(
         (assessment) =>
-          assessment.id,
+        assessment.id,
       ),
   );
 }
@@ -1111,119 +1057,38 @@ function acceptedIdSet(
 function calculateClaimedDurationMinutes(
   input: CanonicalRatingInput,
 
-  physical:
-    EvidenceAssessment[],
-
-  productive:
-    EvidenceAssessment[],
-
-  responsibilities:
-    EvidenceAssessment[],
-
-  other:
-    EvidenceAssessment[],
+  physical: EvidenceAssessment[],
+  productive: EvidenceAssessment[],
+  other: EvidenceAssessment[],
 
   sleepAccepted: boolean,
 ): number {
   let totalMinutes =
     sleepAccepted
-      ? input.sleepEntry
-          ?.duration_minutes ?? 0
+      ? input.sleepEntry?.duration_minutes ?? 0
       : 0;
 
-  const physicalIds =
-    acceptedIdSet(physical);
+  const physicalIds = acceptedIdSet(physical);
+  const productiveIds = acceptedIdSet(productive);
+  const otherIds = acceptedIdSet(other);
 
-  const productiveIds =
-    acceptedIdSet(productive);
-
-  const responsibilityIds =
-    acceptedIdSet(
-      responsibilities,
+  for (const activity of input.physicalActivities) {
+    if (!physicalIds.has(activity.id)) continue;
+    totalMinutes += extractClaimedDurationMinutes(
+      [activity.custom_activity_name, activity.reason].filter(Boolean).join(" "),
     );
-
-  const otherIds =
-    acceptedIdSet(other);
-
-  for (
-    const activity of
-    input.physicalActivities
-  ) {
-    if (
-      !physicalIds.has(
-        activity.id,
-      )
-    ) {
-      continue;
-    }
-
-    totalMinutes +=
-      extractClaimedDurationMinutes(
-        [
-          activity
-            .custom_activity_name,
-          activity.reason,
-        ]
-          .filter(Boolean)
-          .join(" "),
-      );
   }
 
-  for (
-    const activity of
-    input.productiveActivities
-  ) {
-    if (
-      !productiveIds.has(
-        activity.id,
-      )
-    ) {
-      continue;
-    }
-
-    totalMinutes +=
-      extractClaimedDurationMinutes(
-        [
-          activity.title,
-          activity.description,
-        ].join(" "),
-      );
+  for (const activity of input.productiveActivities) {
+    if (!productiveIds.has(activity.id)) continue;
+    totalMinutes += extractClaimedDurationMinutes(
+      [activity.title, activity.description].join(" "),
+    );
   }
 
-  for (
-    const responsibility of
-    input.responsibilities
-  ) {
-    if (
-      !responsibilityIds.has(
-        responsibility.id,
-      )
-    ) {
-      continue;
-    }
-
-    totalMinutes +=
-      extractClaimedDurationMinutes(
-        responsibility.description,
-      );
-  }
-
-  for (
-    const activity of
-    input.otherActivities
-  ) {
-    if (
-      !otherIds.has(
-        activity.id,
-      )
-    ) {
-      continue;
-    }
-
-    totalMinutes +=
-      extractClaimedDurationMinutes(
-        activity.description,
-      );
+  for (const activity of input.otherActivities) {
+    if (!otherIds.has(activity.id)) continue;
+    totalMinutes += extractClaimedDurationMinutes(activity.description ?? "");
   }
 
   return totalMinutes;
@@ -1232,195 +1097,92 @@ function calculateClaimedDurationMinutes(
 export function analyzeInputIntegrity(
   input: CanonicalRatingInput,
 ): InputIntegrityResult {
-  const sleepAccepted =
-    Boolean(
-      input.sleepEntry &&
-        input.sleepEntry
-          .duration_minutes > 0 &&
-        input.sleepEntry
-          .duration_minutes <=
-          1440,
-    );
+  const sleepAccepted = Boolean(
+    input.sleepEntry &&
+      (input.sleepEntry.duration_minutes ?? 0) > 0 &&
+      (input.sleepEntry.duration_minutes ?? 0) <= 1440,
+  );
 
-  const physical =
-    assessPhysicalActivities(input);
+  const physical = assessPhysicalActivities(input);
+  const productive = assessProductiveActivities(input);
+  const other = assessOtherActivities(input);
 
-  const productive =
-    assessProductiveActivities(input);
+  const allAssessments = [...physical, ...productive, ...other];
+  const rawInputCount = (input.sleepEntry ? 1 : 0) + allAssessments.length;
 
-  const responsibilities =
-    assessResponsibilities(input);
-
-  const other =
-    assessOtherActivities(input);
-
-  const allAssessments = [
-    ...physical,
-    ...productive,
-    ...responsibilities,
-    ...other,
-  ];
-
-  const rawInputCount =
-    (input.sleepEntry ? 1 : 0) +
-    allAssessments.length;
-
-  const acceptedAssessments =
-    allAssessments.filter(
-      (assessment) =>
-        assessment.accepted,
-    );
+  const acceptedAssessments = allAssessments.filter(
+    (assessment) => assessment.accepted,
+  );
 
   const rejectedEvidenceCount =
     allAssessments.length -
-      acceptedAssessments.length +
-    (
-      input.sleepEntry &&
-      !sleepAccepted
-        ? 1
-        : 0
-    );
+    acceptedAssessments.length +
+    (input.sleepEntry && !sleepAccepted ? 1 : 0);
 
-  const duplicateEvidenceCount =
-    allAssessments.filter(
-      (assessment) =>
-        assessment.flags.includes(
-          "duplicate_evidence",
-        ),
-    ).length;
+  const duplicateEvidenceCount = allAssessments.filter((assessment) =>
+    assessment.flags.includes("duplicate_evidence"),
+  ).length;
 
   const acceptedEvidenceCount =
-    acceptedAssessments.length +
-    (sleepAccepted ? 1 : 0);
+    acceptedAssessments.length + (sleepAccepted ? 1 : 0);
 
   const qualityValues = [
-    ...acceptedAssessments.map(
-      (assessment) =>
-        assessment.qualityScore,
-    ),
-
-    ...(sleepAccepted
-      ? [0.9]
-      : []),
+    ...acceptedAssessments.map((assessment) => assessment.qualityScore),
+    ...(sleepAccepted ? [0.9] : []),
   ];
 
-  const averageEvidenceQuality =
-    round1(
-      clamp(
-        average(qualityValues),
-        0,
-        1,
-      ),
-    );
+  const averageEvidenceQuality = round1(
+    clamp(average(qualityValues), 0, 1),
+  );
 
   const acceptanceRatio =
     rawInputCount === 0
       ? 0
-      : round1(
-          clamp(
-            acceptedEvidenceCount /
-              rawInputCount,
-            0,
-            1,
-          ),
-        );
+      : round1(clamp(acceptedEvidenceCount / rawInputCount, 0, 1));
 
-  const meaningfulTextEvidenceCount =
-    acceptedAssessments.filter(
-      (assessment) =>
-        assessment.kind !==
-          "physical" ||
-        assessment.qualityScore >=
-          0.75,
-    ).length;
+  const meaningfulTextEvidenceCount = acceptedAssessments.filter(
+    (assessment) => assessment.qualityScore >= 0.5,
+  ).length;
 
-  const claimedDurationMinutes =
-    calculateClaimedDurationMinutes(
-      input,
-      physical,
-      productive,
-      responsibilities,
-      other,
-      sleepAccepted,
-    );
+  const claimedDurationMinutes = calculateClaimedDurationMinutes(
+    input,
+    physical,
+    productive,
+    other,
+    sleepAccepted,
+  );
 
-  const timePlausibilityConflict =
-    claimedDurationMinutes > 1440;
+  const timePlausibilityConflict = claimedDurationMinutes > 1440;
 
-  const validationFlags: string[] = [
-    INPUT_INTEGRITY_RULESET_VERSION,
-  ];
+  const validationFlags: string[] = [INPUT_INTEGRITY_RULESET_VERSION];
+  const aggregateFlags = new Set<string>();
 
-  if (rejectedEvidenceCount > 0) {
-    validationFlags.push(
-      `integrity_rejected_evidence_${rejectedEvidenceCount}`,
-    );
-  }
-
-  if (duplicateEvidenceCount > 0) {
-    validationFlags.push(
-      `integrity_duplicate_evidence_${duplicateEvidenceCount}`,
-    );
-  }
-
-  const aggregateFlags =
-    new Set(
-      allAssessments.flatMap(
-        (assessment) =>
-          assessment.flags,
-      ),
-    );
-
-  for (const flag of aggregateFlags) {
-    validationFlags.push(
-      `integrity_${flag}`,
-    );
-  }
-
-  if (
-    rawInputCount > 0 &&
-    acceptedEvidenceCount === 0
-  ) {
-    validationFlags.push(
-      "integrity_all_inputs_rejected",
-    );
+  for (const assessment of allAssessments) {
+    for (const flag of assessment.flags) {
+      aggregateFlags.add(flag);
+    }
   }
 
   if (timePlausibilityConflict) {
-    validationFlags.push(
-      "time_plausibility_conflict",
-    );
-
-    validationFlags.push(
-      `claimed_duration_minutes_${claimedDurationMinutes}`,
-    );
+    validationFlags.push("time_plausibility_conflict");
+    validationFlags.push(`claimed_duration_minutes_${claimedDurationMinutes}`);
   }
 
   const aiEligible =
     acceptedEvidenceCount > 0 &&
     meaningfulTextEvidenceCount > 0 &&
-    averageEvidenceQuality >=
-      TEXT_QUALITY_THRESHOLDS
-        .minimumAiEligibleAverage &&
-    !aggregateFlags.has(
-      "prompt_injection",
-    ) &&
+    averageEvidenceQuality >= TEXT_QUALITY_THRESHOLDS.minimumAiEligibleAverage &&
+    !aggregateFlags.has("prompt_injection") &&
     !timePlausibilityConflict;
 
-  if (
-    !aiEligible &&
-    rawInputCount > 0
-  ) {
-    validationFlags.push(
-      "integrity_ai_not_eligible",
-    );
+  if (!aiEligible && rawInputCount > 0) {
+    validationFlags.push("integrity_ai_not_eligible");
   }
 
   return {
     sleepAccepted,
     physical,
     productive,
-    responsibilities,
     other,
 
     metrics: {

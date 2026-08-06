@@ -86,13 +86,6 @@ export function PerformanceHistory({
                   scope="col"
                   className="px-3 py-3 font-medium"
                 >
-                  Responsibility
-                </th>
-
-                <th
-                  scope="col"
-                  className="px-3 py-3 font-medium"
-                >
                   Status
                 </th>
 
@@ -130,12 +123,6 @@ export function PerformanceHistory({
 
                   <ScoreCell
                     value={rating?.discipline_rating ?? null}
-                  />
-
-                  <ScoreCell
-                    value={
-                      rating?.responsibility_rating ?? null
-                    }
                   />
 
                   <td className="whitespace-nowrap px-3 py-4 text-zinc-400">

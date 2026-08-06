@@ -20,7 +20,7 @@ The implemented product positioning is a personal daily performance record and r
 2. Complete a HuMob profile with a unique username and timezone.
 3. Record physical and productive activities during the editable window of the current Daily Match.
 4. Wait for the automated rating lifecycle to produce a final score.
-5. Review the overall score and four dimensions: Energy, Focus, Discipline, and Responsibility.
+5. Review the overall score and primary performance dimensions: Energy, Focus, Discipline (Productivity integrated).
 6. Track completed ratings in dashboard visualizations, calendar, profile statistics, and public-profile summaries when the account is public.
 
 The core value proposition implemented today is: structured personal daily input is transformed into a stored, explainable numerical performance history. AI can assist dimension adjustments, but the final score is still constrained by deterministic logic and configuration weights.
@@ -231,7 +231,7 @@ Daily Match reaches queue time
 
 `generate-ai-rating` permits user-authenticated previews but restricts finalization to the internal job secret. It hashes canonical input, avoids AI when input fails eligibility, uses logic fallback if AI is unavailable, and stores the source as `ai_primary`, `ai_fallback`, `logic_fallback`, or `no_activity`.
 
-**Dimensions:** Energy, Focus, Discipline, Responsibility, and weighted Overall. The overall is calculated server-side from dimension values and active weights; the provider never directly supplies final overall.
+**Dimensions:** Energy, Focus, Discipline, and weighted Overall (Responsibility permanently deprecated). The overall is calculated server-side from dimension values and active weights; the provider never directly supplies final overall.
 
 **Current status:** Backend code, Edge Function entry points, persistence schema, and automated tests are present.  
 **Limitations:** No scheduler or external invocation configuration for the queue/worker was found in this repository, so automatic production scheduling cannot be verified from code alone. Browser input currently covers only two of the five input table categories.
@@ -579,7 +579,7 @@ There is no implemented user-to-user interaction beyond public-profile search an
 4. **Settings only expose a master push toggle:** More granular reminder/event settings exist in the database but have no current settings UI.
 5. **Deletion request is incomplete as a product workflow:** The user can request deletion, but no cancellation, progress, staff process, or purge job is found.
 6. **Explore search is server-submitted, not debounced:** Functional and simple, but it gives no live search experience.
-7. **Error and copy consistency:** Some error boundaries are Indonesian, others are English; Today error state can render `error.message`, which should remain carefully sanitized. UI naming has source typos such as `perfomance-chart.tsx` and `perfomance-history.tsx`.
+7. **Error and copy consistency:** Some error boundaries are Indonesian, others are English; Today error state can render `error.message`, which should remain carefully sanitized. UI naming typos (`perfomance-chart.tsx` and `perfomance-history.tsx`) have been corrected.
 8. **Potential server/client environment dependency:** `saveDeviceToken` runs as a Server Action yet reads `navigator` for a fallback device name. That should be moved or made server-safe during a future technical fix.
 9. **Dashboard read cost:** The page reads up to 400 matches and ratings plus a best-rating query and achievement projection. This is acceptable for early scale but will require pagination, precomputed read models, or scoped date windows as user history grows.
 10. **Baseline value is not a visible growth product:** `performance_baselines` exists and is refreshed by rating changes, but current dashboard UI neither compares today's score to personal baseline nor presents baseline-based insights.

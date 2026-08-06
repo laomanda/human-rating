@@ -12,8 +12,7 @@ export type PublicProfileAttribute = {
   key:
     | "energy"
     | "focus"
-    | "discipline"
-    | "responsibility";
+    | "discipline";
   label: string;
   value: number;
 };
@@ -29,7 +28,6 @@ export type PublicPerformanceSummary = {
   averageEnergy: number | null;
   averageFocus: number | null;
   averageDiscipline: number | null;
-  averageResponsibility: number | null;
   ratedDays: number;
   sampledRatingCount: number;
   strongestAttribute: PublicProfileAttribute | null;

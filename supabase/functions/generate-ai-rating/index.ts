@@ -79,7 +79,6 @@ function zeroDimensions():
     energy: 0,
     focus: 0,
     discipline: 0,
-    responsibility: 0,
   };
 }
 
@@ -99,11 +98,7 @@ function weightedOverall(
           config.focus_weight +
 
         ratings.discipline *
-          config.discipline_weight +
-
-        ratings.responsibility *
-          config
-            .responsibility_weight,
+          config.discipline_weight,
     ),
   );
 }
@@ -234,7 +229,6 @@ function calculateFinalRating(
       "energy",
       "focus",
       "discipline",
-      "responsibility",
     ] as const
   ) {
     if (!logic.hasData[key]) {

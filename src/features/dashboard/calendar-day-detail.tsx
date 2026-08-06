@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import {
   BatteryCharging,
   CheckCircle2,
-  ClipboardCheck,
   Focus,
   Gauge,
   X,
@@ -70,14 +69,6 @@ export function CalendarDayDetail({
       value: day.rating.discipline_rating,
       icon: (
         <CheckCircle2 className="h-4 w-4" />
-      ),
-    },
-    {
-      label: "Responsibility",
-      value:
-        day.rating.responsibility_rating,
-      icon: (
-        <ClipboardCheck className="h-4 w-4" />
       ),
     },
   ];

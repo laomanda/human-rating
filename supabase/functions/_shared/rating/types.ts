@@ -1,21 +1,43 @@
-import type {
-  SupabaseClient,
-} from "@supabase/supabase-js";
-
-export type DatabaseClient = SupabaseClient;
-
 /* ============================================================
- * DATABASE ENUMS
+ * HuMob Rating Engine Types
  * ============================================================
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+export type DatabaseClient = SupabaseClient;
+
 export type DailyMatchStatus =
-  | "open"
+  | "editable"
   | "locked"
   | "queued"
   | "processing"
   | "rated"
   | "failed";
+
+export type PhysicalActivityCategory =
+  | "cardio"
+  | "strength"
+  | "flexibility"
+  | "sports"
+  | "walking"
+  | "other";
+
+export type ProductiveActivityCategory =
+  | "deep_work"
+  | "learning"
+  | "creative"
+  | "admin"
+  | "problem_solving"
+  | "other";
+
+export type OtherActivityCategory =
+  | "rest"
+  | "social"
+  | "hobby"
+  | "meditation"
+  | "planning"
+  | "other";
 
 export type RatingSource =
   | "ai_primary"
@@ -23,9 +45,10 @@ export type RatingSource =
   | "logic_fallback"
   | "no_activity";
 
-export type SleepQuality =
-  | "poor"
-  | "fair"
+export type EnergyQuality =
+  | "very_low"
+  | "low"
+  | "moderate"
   | "good"
   | "very_good";
 
@@ -48,8 +71,7 @@ export type ImportanceLevel =
 export type PerformanceAttribute =
   | "energy"
   | "focus"
-  | "discipline"
-  | "responsibility";
+  | "discipline";
 
 /* ============================================================
  * DATABASE ROWS
@@ -92,7 +114,6 @@ export type ScoringConfigRow = {
   energy_weight: number;
   focus_weight: number;
   discipline_weight: number;
-  responsibility_weight: number;
 
   universal_weight: number;
   personal_weight: number;
@@ -110,7 +131,6 @@ export type PerformanceBaselineRow = {
   energy_baseline: number;
   focus_baseline: number;
   discipline_baseline: number;
-  responsibility_baseline: number;
 
   calibration_completed_at: string | null;
   updated_at: string;
@@ -124,10 +144,8 @@ export type SleepEntryRow = {
   sleep_started_at: string;
   woke_at: string;
   duration_minutes: number;
-  quality: SleepQuality;
+  quality: string;
   woke_during_sleep: boolean;
-
-  validation_flags: unknown;
 
   created_at: string;
   updated_at: string;
@@ -140,8 +158,9 @@ export type PhysicalActivityRow = {
 
   activity_type: string;
   custom_activity_name: string | null;
-  intensity: ActivityIntensity;
-  reason: string;
+  duration_minutes: number | null;
+  intensity: string | null;
+  reason: string | null;
 
   normalized_signature: string;
   validation_flags: unknown;
@@ -157,24 +176,8 @@ export type ProductiveActivityRow = {
 
   category: string;
   title: string;
-  description: string;
-
-  normalized_signature: string;
-  validation_flags: unknown;
-
-  created_at: string;
-  updated_at: string;
-};
-
-export type ResponsibilityRow = {
-  id: string;
-  daily_match_id: string;
-  user_id: string;
-
-  category: string;
-  description: string;
-  execution_status: ExecutionStatus;
-  importance: ImportanceLevel;
+  description: string | null;
+  duration_minutes: number | null;
 
   normalized_signature: string;
   validation_flags: unknown;
@@ -189,12 +192,9 @@ export type OtherActivityRow = {
   user_id: string;
 
   description: string;
+  classified_attribute: string | null;
+
   normalized_signature: string;
-
-  classified_attribute:
-    | PerformanceAttribute
-    | null;
-
   validation_flags: unknown;
 
   created_at: string;
@@ -210,22 +210,18 @@ export type ExistingRatingRow = {
   energy_has_data: boolean;
   focus_has_data: boolean;
   discipline_has_data: boolean;
-  responsibility_has_data: boolean;
 
   logic_energy: number;
   logic_focus: number;
   logic_discipline: number;
-  logic_responsibility: number;
 
   ai_energy_adjustment: number;
   ai_focus_adjustment: number;
   ai_discipline_adjustment: number;
-  ai_responsibility_adjustment: number;
 
   energy_rating: number;
   focus_rating: number;
   discipline_rating: number;
-  responsibility_rating: number;
   overall_rating: number;
 
   source: RatingSource;
@@ -254,7 +250,6 @@ export type CanonicalRatingInput = {
 
   physicalActivities: PhysicalActivityRow[];
   productiveActivities: ProductiveActivityRow[];
-  responsibilities: ResponsibilityRow[];
   otherActivities: OtherActivityRow[];
 
   existingRating: ExistingRatingRow | null;
@@ -269,7 +264,6 @@ export type EvidenceKind =
   | "sleep"
   | "physical"
   | "productive"
-  | "responsibility"
   | "other";
 
 export type TextQualityAssessment = {
@@ -313,7 +307,6 @@ export type InputIntegrityResult = {
 
   physical: EvidenceAssessment[];
   productive: EvidenceAssessment[];
-  responsibilities: EvidenceAssessment[];
   other: EvidenceAssessment[];
 
   metrics: InputIntegrityMetrics;
@@ -330,14 +323,12 @@ export type DimensionMap = {
   energy: number;
   focus: number;
   discipline: number;
-  responsibility: number;
 };
 
 export type DimensionAvailability = {
   energy: boolean;
   focus: boolean;
   discipline: boolean;
-  responsibility: boolean;
 };
 
 export type LogicScoreMetrics =
@@ -347,11 +338,6 @@ export type LogicScoreMetrics =
     energyEvidenceCount: number;
     focusEvidenceCount: number;
     disciplineEvidenceCount: number;
-    responsibilityEvidenceCount: number;
-
-    responsibilityCompletionRatio:
-      | number
-      | null;
 
     databaseInputCount: number;
   };
@@ -396,6 +382,12 @@ export type AiProviderResult = {
 
 export type AiProviderRunResult = {
   result: AiProviderResult | null;
+  validationFlags: string[];
+};
+
+export type ValidatedProviderOutput = {
+  adjustments: DimensionMap;
+  confidence: number;
   validationFlags: string[];
 };
 

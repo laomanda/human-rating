@@ -84,7 +84,6 @@ function zeroDimensions():
     energy: 0,
     focus: 0,
     discipline: 0,
-    responsibility: 0,
   };
 }
 
@@ -136,12 +135,6 @@ function sanitizeInputForAi(
   const productiveById =
     assessmentMap(
       logic.integrity.productive,
-    );
-
-  const responsibilityById =
-    assessmentMap(
-      logic.integrity
-        .responsibilities,
     );
 
   const otherById =
@@ -272,46 +265,6 @@ function sanitizeInputForAi(
           ];
         }),
 
-    responsibilities:
-      input.responsibilities
-        .flatMap(
-          (responsibility) => {
-            const assessment =
-              acceptedAssessment(
-                responsibilityById,
-                responsibility.id,
-              );
-
-            if (!assessment) {
-              return [];
-            }
-
-            return [
-              {
-                category:
-                  responsibility
-                    .category,
-
-                description:
-                  responsibility
-                    .description,
-
-                executionStatus:
-                  responsibility
-                    .execution_status,
-
-                importance:
-                  responsibility
-                    .importance,
-
-                evidenceQuality:
-                  assessment
-                    .qualityScore,
-              },
-            ];
-          },
-        ),
-
     otherActivities:
       input.otherActivities
         .flatMap((activity) => {
@@ -429,14 +382,6 @@ function createResponseFormat(
               maximumAdjustment,
           },
 
-          responsibility_adjustment: {
-            type: "number",
-            minimum:
-              -maximumAdjustment,
-            maximum:
-              maximumAdjustment,
-          },
-
           confidence: {
             type: "number",
             minimum: 0,
@@ -448,7 +393,6 @@ function createResponseFormat(
           "energy_adjustment",
           "focus_adjustment",
           "discipline_adjustment",
-          "responsibility_adjustment",
           "confidence",
         ],
       },
@@ -507,7 +451,6 @@ function validateProviderOutput(
     "energy_adjustment",
     "focus_adjustment",
     "discipline_adjustment",
-    "responsibility_adjustment",
     "confidence",
   ] as const;
 
@@ -543,10 +486,6 @@ function validateProviderOutput(
     discipline:
       record
         .discipline_adjustment as number,
-
-    responsibility:
-      record
-        .responsibility_adjustment as number,
   };
 
   for (
@@ -570,14 +509,14 @@ function validateProviderOutput(
       raw > maximum
     ) {
       throw new ProviderError(
-        `AI output ${key} adjustment is outside the configured range.`,
+        `AI output ${key} adjustment exceeds maximum bounds.`,
         true,
       );
     }
   }
 
   const confidence =
-    record.confidence;
+    record.confidence as number;
 
   if (
     typeof confidence !== "number" ||
@@ -586,27 +525,22 @@ function validateProviderOutput(
     confidence > 1
   ) {
     throw new ProviderError(
-      "AI output confidence must be a finite number from 0.0 to 1.0.",
+      "AI output confidence is invalid.",
       true,
     );
   }
 
-  const validationFlags:
-    string[] = [];
+  const validationFlags: string[] = [];
 
-  if (
-    confidence <
-    AI_MIN_CONFIDENCE
-  ) {
+  if (confidence < AI_MIN_CONFIDENCE) {
+    validationFlags.push(
+      "ai_confidence_too_low_fallback_used",
+    );
+
     return {
-      adjustments:
-        zeroDimensions(),
-
+      adjustments: zeroDimensions(),
       confidence,
-
-      validationFlags: [
-        "ai_low_confidence_adjustments_zeroed",
-      ],
+      validationFlags,
     };
   }
 
@@ -626,7 +560,6 @@ function validateProviderOutput(
       "energy",
       "focus",
       "discipline",
-      "responsibility",
     ] as const
   ) {
     if (!logic.hasData[key]) {

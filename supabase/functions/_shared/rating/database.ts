@@ -159,7 +159,7 @@ function readAdminCredential(
 export function createAdminClient(
   readEnv: EnvironmentReader = (
     name,
-  ) => Deno.env.get(name),
+  ) => (typeof Deno !== "undefined" ? Deno.env.get(name) : (process.env[name] as string | undefined)),
 ): DatabaseClient {
   const supabaseUrl = readNonEmptySecret(
     readEnv(
@@ -222,7 +222,7 @@ export async function authenticateRequest(
   admin: DatabaseClient,
   readEnv: EnvironmentReader = (
     name,
-  ) => Deno.env.get(name),
+  ) => (typeof Deno !== "undefined" ? Deno.env.get(name) : (process.env[name] as string | undefined)),
 ): Promise<RequestAuth> {
   const expectedJobSecret = readNonEmptySecret(
     readEnv(
@@ -518,15 +518,11 @@ export function buildFinalRatingPayload(
 
     discipline_has_data: logic.hasData.discipline,
 
-    responsibility_has_data: logic.hasData.responsibility,
-
     logic_energy: logic.logic.energy,
 
     logic_focus: logic.logic.focus,
 
     logic_discipline: logic.logic.discipline,
-
-    logic_responsibility: logic.logic.responsibility,
 
     ai_energy_adjustment: final.adjustments.energy,
 
@@ -534,17 +530,11 @@ export function buildFinalRatingPayload(
 
     ai_discipline_adjustment: final.adjustments.discipline,
 
-    ai_responsibility_adjustment: final.adjustments
-      .responsibility,
-
     energy_rating: final.ratings.energy,
 
     focus_rating: final.ratings.focus,
 
     discipline_rating: final.ratings.discipline,
-
-    responsibility_rating: final.ratings
-      .responsibility,
 
     source: final.source,
 

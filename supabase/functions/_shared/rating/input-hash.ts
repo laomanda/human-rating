@@ -57,10 +57,6 @@ export async function createInputHash(
         input.scoringConfig
           .discipline_weight,
 
-      responsibilityWeight:
-        input.scoringConfig
-          .responsibility_weight,
-
       universalWeight:
         input.scoringConfig
           .universal_weight,
@@ -95,10 +91,6 @@ export async function createInputHash(
           discipline:
             input.baseline
               .discipline_baseline,
-
-          responsibility:
-            input.baseline
-              .responsibility_baseline,
 
           completedAt:
             input.baseline
@@ -214,36 +206,6 @@ export async function createInputHash(
         updatedAt:
           activity.updated_at,
       })),
-
-    responsibilities:
-      sortableRows(
-        input.responsibilities,
-      ).map(
-        (responsibility) => ({
-          id:
-            responsibility.id,
-
-          category:
-            responsibility.category,
-
-          description:
-            responsibility.description,
-
-          executionStatus:
-            responsibility
-              .execution_status,
-
-          importance:
-            responsibility.importance,
-
-          normalizedSignature:
-            responsibility
-              .normalized_signature,
-
-          updatedAt:
-            responsibility.updated_at,
-        }),
-      ),
 
     otherActivities:
       sortableRows(

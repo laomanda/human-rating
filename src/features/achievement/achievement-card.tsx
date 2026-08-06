@@ -6,7 +6,6 @@ import {
   Crown,
   Flame,
   Lock,
-  ShieldCheck,
   Sparkles,
   Target,
 } from "lucide-react";
@@ -36,9 +35,6 @@ const ACHIEVEMENT_ICONS: Readonly<
   ),
   focused: (
     <Target className="h-5 w-5" />
-  ),
-  responsible: (
-    <ShieldCheck className="h-5 w-5" />
   ),
   elite_performance: (
     <Crown className="h-5 w-5" />

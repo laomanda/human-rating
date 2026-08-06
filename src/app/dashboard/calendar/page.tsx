@@ -96,7 +96,7 @@ export default async function CalendarPage() {
           </h2>
 
           <ul className="mt-3 space-y-2 text-sm text-amber-200/70">
-            {calendarData.warnings.map((warning) => (
+            {calendarData.warnings.map((warning: string) => (
               <li key={warning}>• {warning}</li>
             ))}
           </ul>

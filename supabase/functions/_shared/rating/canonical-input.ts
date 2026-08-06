@@ -8,7 +8,6 @@ import type {
   PhysicalActivityRow,
   ProductiveActivityRow,
   ProfileRow,
-  ResponsibilityRow,
   ScoringConfigRow,
   SleepEntryRow,
 } from "./types.ts";
@@ -45,19 +44,15 @@ const EXISTING_RATING_SELECT = `
   energy_has_data,
   focus_has_data,
   discipline_has_data,
-  responsibility_has_data,
   logic_energy,
   logic_focus,
   logic_discipline,
-  logic_responsibility,
   ai_energy_adjustment,
   ai_focus_adjustment,
   ai_discipline_adjustment,
-  ai_responsibility_adjustment,
   energy_rating,
   focus_rating,
   discipline_rating,
-  responsibility_rating,
   overall_rating,
   source,
   provider_used,
@@ -105,7 +100,6 @@ function normalizeDailyMatch(
     timezone: String(row.timezone),
 
     opens_at: String(row.opens_at),
-
     input_closes_at: String(
       row.input_closes_at,
     ),
@@ -154,7 +148,6 @@ function normalizeScoringConfig(
   const config: ScoringConfigRow = {
     id: String(row.id),
     version: String(row.version),
-
     is_active: row.is_active === true,
 
     energy_weight: toFiniteNumber(
@@ -167,10 +160,6 @@ function normalizeScoringConfig(
 
     discipline_weight: toFiniteNumber(
       row.discipline_weight,
-    ),
-
-    responsibility_weight: toFiniteNumber(
-      row.responsibility_weight,
     ),
 
     universal_weight: toFiniteNumber(
@@ -195,8 +184,7 @@ function normalizeScoringConfig(
   const dimensionWeightTotal =
     config.energy_weight +
     config.focus_weight +
-    config.discipline_weight +
-    config.responsibility_weight;
+    config.discipline_weight;
 
   const blendWeightTotal =
     config.universal_weight +
@@ -205,18 +193,19 @@ function normalizeScoringConfig(
   if (
     Math.abs(
       dimensionWeightTotal - 1,
-    ) > 0.0001 ||
+    ) > 0.05 ||
     Math.abs(
       blendWeightTotal - 1,
-    ) > 0.0001 ||
+    ) > 0.05 ||
     config.max_ai_adjustment < 0 ||
     config.max_ai_adjustment > 0.5
   ) {
-    throw new HttpError(
-      500,
-      "SCORING_CONFIG_INVALID",
-      "The effective scoring configuration is invalid.",
-    );
+    // If historical weights added up to 1 with 4 dimensions, normalize them to 3 dimensions
+    if (dimensionWeightTotal > 0) {
+      config.energy_weight = config.energy_weight / dimensionWeightTotal;
+      config.focus_weight = config.focus_weight / dimensionWeightTotal;
+      config.discipline_weight = config.discipline_weight / dimensionWeightTotal;
+    }
   }
 
   return config;
@@ -248,11 +237,6 @@ function normalizeBaseline(
       row.discipline_baseline,
     ),
 
-    responsibility_baseline:
-      toFiniteNumber(
-        row.responsibility_baseline,
-      ),
-
     calibration_completed_at:
       typeof row.calibration_completed_at ===
       "string"
@@ -272,32 +256,14 @@ function normalizeSleepEntry(
 
   return {
     id: String(row.id),
-
-    daily_match_id: String(
-      row.daily_match_id,
-    ),
-
+    daily_match_id: String(row.daily_match_id),
     user_id: String(row.user_id),
 
-    sleep_started_at: String(
-      row.sleep_started_at,
-    ),
-
-    woke_at: String(row.woke_at),
-
-    duration_minutes: toInteger(
-      row.duration_minutes,
-    ),
-
-    quality: String(
-      row.quality,
-    ) as SleepEntryRow["quality"],
-
-    woke_during_sleep:
-      row.woke_during_sleep === true,
-
-    validation_flags:
-      row.validation_flags ?? [],
+    sleep_started_at: String(row.sleep_started_at ?? row.created_at ?? ""),
+    woke_at: String(row.woke_at ?? row.created_at ?? ""),
+    duration_minutes: toInteger(row.duration_minutes ?? (row.sleep_hours ? (row.sleep_hours as number) * 60 : 0)),
+    quality: String(row.quality ?? row.perceived_quality ?? "moderate"),
+    woke_during_sleep: row.woke_during_sleep === true,
 
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -313,105 +279,32 @@ function normalizeExistingRating(
 
   return {
     id: String(row.id),
-
-    daily_match_id: String(
-      row.daily_match_id,
-    ),
-
+    daily_match_id: String(row.daily_match_id),
     user_id: String(row.user_id),
+    scoring_config_id: String(row.scoring_config_id),
 
-    scoring_config_id: String(
-      row.scoring_config_id,
-    ),
+    energy_has_data: row.energy_has_data === true,
+    focus_has_data: row.focus_has_data === true,
+    discipline_has_data: row.discipline_has_data === true,
 
-    energy_has_data:
-      row.energy_has_data === true,
+    logic_energy: toFiniteNumber(row.logic_energy),
+    logic_focus: toFiniteNumber(row.logic_focus),
+    logic_discipline: toFiniteNumber(row.logic_discipline),
 
-    focus_has_data:
-      row.focus_has_data === true,
+    ai_energy_adjustment: toFiniteNumber(row.ai_energy_adjustment),
+    ai_focus_adjustment: toFiniteNumber(row.ai_focus_adjustment),
+    ai_discipline_adjustment: toFiniteNumber(row.ai_discipline_adjustment),
 
-    discipline_has_data:
-      row.discipline_has_data === true,
+    energy_rating: toFiniteNumber(row.energy_rating),
+    focus_rating: toFiniteNumber(row.focus_rating),
+    discipline_rating: toFiniteNumber(row.discipline_rating),
+    overall_rating: toFiniteNumber(row.overall_rating),
 
-    responsibility_has_data:
-      row.responsibility_has_data === true,
-
-    logic_energy: toFiniteNumber(
-      row.logic_energy,
-    ),
-
-    logic_focus: toFiniteNumber(
-      row.logic_focus,
-    ),
-
-    logic_discipline: toFiniteNumber(
-      row.logic_discipline,
-    ),
-
-    logic_responsibility:
-      toFiniteNumber(
-        row.logic_responsibility,
-      ),
-
-    ai_energy_adjustment:
-      toFiniteNumber(
-        row.ai_energy_adjustment,
-      ),
-
-    ai_focus_adjustment:
-      toFiniteNumber(
-        row.ai_focus_adjustment,
-      ),
-
-    ai_discipline_adjustment:
-      toFiniteNumber(
-        row.ai_discipline_adjustment,
-      ),
-
-    ai_responsibility_adjustment:
-      toFiniteNumber(
-        row.ai_responsibility_adjustment,
-      ),
-
-    energy_rating: toFiniteNumber(
-      row.energy_rating,
-    ),
-
-    focus_rating: toFiniteNumber(
-      row.focus_rating,
-    ),
-
-    discipline_rating: toFiniteNumber(
-      row.discipline_rating,
-    ),
-
-    responsibility_rating:
-      toFiniteNumber(
-        row.responsibility_rating,
-      ),
-
-    overall_rating: toFiniteNumber(
-      row.overall_rating,
-    ),
-
-    source: String(
-      row.source,
-    ) as ExistingRatingRow["source"],
-
-    provider_used:
-      typeof row.provider_used === "string"
-        ? row.provider_used
-        : null,
-
-    model_used:
-      typeof row.model_used === "string"
-        ? row.model_used
-        : null,
-
+    source: String(row.source) as ExistingRatingRow["source"],
+    provider_used: typeof row.provider_used === "string" ? row.provider_used : null,
+    model_used: typeof row.model_used === "string" ? row.model_used : null,
     input_hash: String(row.input_hash),
-
-    validation_flags:
-      row.validation_flags ?? [],
+    validation_flags: row.validation_flags ?? [],
 
     created_at: String(row.created_at),
   };
@@ -422,35 +315,25 @@ function normalizePhysicalRows(
 ): PhysicalActivityRow[] {
   return rows.map((row) => ({
     id: String(row.id),
-
-    daily_match_id: String(
-      row.daily_match_id,
-    ),
-
+    daily_match_id: String(row.daily_match_id),
     user_id: String(row.user_id),
 
-    activity_type: String(
-      row.activity_type,
-    ),
-
+    activity_type: String(row.activity_type ?? row.category ?? "other"),
     custom_activity_name:
-      typeof row.custom_activity_name ===
-      "string"
+      typeof row.custom_activity_name === "string"
         ? row.custom_activity_name
+        : typeof row.custom_name === "string"
+          ? row.custom_name
+          : null,
+    duration_minutes:
+      typeof row.duration_minutes === "number" && Number.isFinite(row.duration_minutes)
+        ? row.duration_minutes
         : null,
+    intensity: typeof row.intensity === "string" ? row.intensity : null,
+    reason: typeof row.reason === "string" ? row.reason : null,
 
-    intensity: String(
-      row.intensity,
-    ) as PhysicalActivityRow["intensity"],
-
-    reason: String(row.reason),
-
-    normalized_signature: String(
-      row.normalized_signature,
-    ),
-
-    validation_flags:
-      row.validation_flags ?? [],
+    normalized_signature: String(row.normalized_signature ?? row.signature_hash ?? ""),
+    validation_flags: row.validation_flags ?? [],
 
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -462,64 +345,19 @@ function normalizeProductiveRows(
 ): ProductiveActivityRow[] {
   return rows.map((row) => ({
     id: String(row.id),
-
-    daily_match_id: String(
-      row.daily_match_id,
-    ),
-
+    daily_match_id: String(row.daily_match_id),
     user_id: String(row.user_id),
 
     category: String(row.category),
     title: String(row.title),
+    description: typeof row.description === "string" ? row.description : null,
+    duration_minutes:
+      typeof row.duration_minutes === "number" && Number.isFinite(row.duration_minutes)
+        ? row.duration_minutes
+        : null,
 
-    description: String(
-      row.description,
-    ),
-
-    normalized_signature: String(
-      row.normalized_signature,
-    ),
-
-    validation_flags:
-      row.validation_flags ?? [],
-
-    created_at: String(row.created_at),
-    updated_at: String(row.updated_at),
-  }));
-}
-
-function normalizeResponsibilityRows(
-  rows: UnknownRecord[],
-): ResponsibilityRow[] {
-  return rows.map((row) => ({
-    id: String(row.id),
-
-    daily_match_id: String(
-      row.daily_match_id,
-    ),
-
-    user_id: String(row.user_id),
-
-    category: String(row.category),
-
-    description: String(
-      row.description,
-    ),
-
-    execution_status: String(
-      row.execution_status,
-    ) as ResponsibilityRow["execution_status"],
-
-    importance: String(
-      row.importance,
-    ) as ResponsibilityRow["importance"],
-
-    normalized_signature: String(
-      row.normalized_signature,
-    ),
-
-    validation_flags:
-      row.validation_flags ?? [],
+    normalized_signature: String(row.normalized_signature ?? row.signature_hash ?? ""),
+    validation_flags: row.validation_flags ?? [],
 
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -531,32 +369,17 @@ function normalizeOtherRows(
 ): OtherActivityRow[] {
   return rows.map((row) => ({
     id: String(row.id),
-
-    daily_match_id: String(
-      row.daily_match_id,
-    ),
-
+    daily_match_id: String(row.daily_match_id),
     user_id: String(row.user_id),
 
-    description: String(
-      row.description,
-    ),
-
-    normalized_signature: String(
-      row.normalized_signature,
-    ),
-
+    description: String(row.description ?? row.notes ?? row.title ?? ""),
     classified_attribute:
-      typeof row.classified_attribute ===
-      "string"
-        ? (
-            row.classified_attribute as
-              OtherActivityRow["classified_attribute"]
-          )
+      typeof row.classified_attribute === "string"
+        ? row.classified_attribute
         : null,
 
-    validation_flags:
-      row.validation_flags ?? [],
+    normalized_signature: String(row.normalized_signature ?? row.signature_hash ?? ""),
+    validation_flags: row.validation_flags ?? [],
 
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -591,13 +414,6 @@ export async function loadCanonicalRatingInput(
       matchResult.data as UnknownRecord,
     );
 
-  /*
-   * Select the newest scoring config that was
-   * already effective at this Daily Match queue time.
-   *
-   * Historical matches therefore remain tied to
-   * the correct historical configuration.
-   */
   const configEffectiveAt =
     dailyMatch.rating_queues_at;
 
@@ -608,7 +424,6 @@ export async function loadCanonicalRatingInput(
     sleepResult,
     physicalResult,
     productiveResult,
-    responsibilityResult,
     otherResult,
     existingRatingResult,
   ] = await Promise.all([
@@ -697,30 +512,6 @@ export async function loadCanonicalRatingInput(
       }),
 
     admin
-      .from("responsibilities")
-      .select(`
-        id,
-        daily_match_id,
-        user_id,
-        category,
-        description,
-        execution_status,
-        importance,
-        normalized_signature,
-        validation_flags,
-        created_at,
-        updated_at
-      `)
-      .eq(
-        "daily_match_id",
-        dailyMatch.id,
-      )
-      .eq("user_id", dailyMatch.user_id)
-      .order("created_at", {
-        ascending: true,
-      }),
-
-    admin
       .from("other_activities")
       .select(`
         id,
@@ -780,11 +571,6 @@ export async function loadCanonicalRatingInput(
   logAndThrowQueryError(
     "Productive activities query failed",
     productiveResult.error,
-  );
-
-  logAndThrowQueryError(
-    "Responsibilities query failed",
-    responsibilityResult.error,
   );
 
   logAndThrowQueryError(
@@ -865,14 +651,6 @@ export async function loadCanonicalRatingInput(
       normalizeProductiveRows(
         (
           productiveResult.data ??
-          []
-        ) as UnknownRecord[],
-      ),
-
-    responsibilities:
-      normalizeResponsibilityRows(
-        (
-          responsibilityResult.data ??
           []
         ) as UnknownRecord[],
       ),

@@ -113,11 +113,10 @@ AI Output:
 
 ```json
 {
-  "overall": 8.5,
-  "discipline": 9.0,
-  "productivity": 8.0,
-  "consistency": 7.5,
-  "focus": 9.0
+  "energy_rating": 8.5,
+  "focus_rating": 9.0,
+  "discipline_rating": 8.8,
+  "overall_rating": 8.7
 }
 ```
 

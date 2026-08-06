@@ -28,7 +28,6 @@ const PROFILE_RATING_SELECT = [
   "energy_rating",
   "focus_rating",
   "discipline_rating",
-  "responsibility_rating",
   "overall_rating",
 ].join(",");
 
@@ -36,7 +35,6 @@ type RatingSnapshot = {
   energy: number | null;
   focus: number | null;
   discipline: number | null;
-  responsibility: number | null;
   overall: number | null;
 };
 
@@ -94,9 +92,6 @@ function normalizeRatingSnapshot(
     discipline: toNullableNumber(
       row.discipline_rating,
     ),
-    responsibility: toNullableNumber(
-      row.responsibility_rating,
-    ),
     overall: toNullableNumber(
       row.overall_rating,
     ),
@@ -153,16 +148,6 @@ function getStrongestAttribute(
         ratings.map(
           (rating) =>
             rating.discipline,
-        ),
-      ),
-    },
-    {
-      key: "responsibility",
-      label: "Responsibility",
-      value: average(
-        ratings.map(
-          (rating) =>
-            rating.responsibility,
         ),
       ),
     },

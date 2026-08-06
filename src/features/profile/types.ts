@@ -62,8 +62,7 @@ export type UploadedAvatar = {
 export type ProfileAttributeKey =
   | "energy"
   | "focus"
-  | "discipline"
-  | "responsibility";
+  | "discipline";
 
 export type StrongestProfileAttribute = {
   key: ProfileAttributeKey;

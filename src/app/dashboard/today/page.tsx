@@ -207,10 +207,6 @@ export default async function TodayMatchPage() {
               discipline_rating={
                 dailyRating.discipline_rating
               }
-              responsibility_rating={
-                dailyRating
-                  .responsibility_rating
-              }
               source={dailyRating.source}
               status={dailyMatch.status}
             />

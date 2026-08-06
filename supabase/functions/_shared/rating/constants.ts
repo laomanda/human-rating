@@ -61,19 +61,6 @@ export const PHYSICAL_INTENSITY_SCORE = {
   heavy: 9.0,
 } as const;
 
-export const RESPONSIBILITY_EXECUTION_SCORE = {
-  completed: 10.0,
-  partially_completed: 6.0,
-  not_completed: 0.0,
-} as const;
-
-export const RESPONSIBILITY_IMPORTANCE_WEIGHT = {
-  low: 1.0,
-  normal: 1.25,
-  important: 1.5,
-  very_important: 2.0,
-} as const;
-
 export const TEXT_QUALITY_THRESHOLDS = {
   minimumAccepted: 0.35,
   minimumOtherActivity: 0.5,

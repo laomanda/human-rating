@@ -33,7 +33,6 @@ const PUBLIC_RATING_SELECT = [
   "energy_rating",
   "focus_rating",
   "discipline_rating",
-  "responsibility_rating",
   "overall_rating",
   "created_at",
 ].join(",");
@@ -47,7 +46,6 @@ type PublicRatingSnapshot = {
   energy: number | null;
   focus: number | null;
   discipline: number | null;
-  responsibility: number | null;
   overall: number | null;
   createdAt: string | null;
 };
@@ -118,9 +116,6 @@ function normalizeRating(
     discipline: toNullableNumber(
       row.discipline_rating,
     ),
-    responsibility: toNullableNumber(
-      row.responsibility_rating,
-    ),
     overall: toNullableNumber(row.overall_rating),
     createdAt: asString(row.created_at),
   };
@@ -157,9 +152,6 @@ function createPerformanceSummary(
   const averageDiscipline = average(
     ratings.map((rating) => rating.discipline),
   );
-  const averageResponsibility = average(
-    ratings.map((rating) => rating.responsibility),
-  );
 
   const attributes: PublicProfileAttribute[] = [
     {
@@ -176,11 +168,6 @@ function createPerformanceSummary(
       key: "discipline",
       label: "Discipline",
       value: averageDiscipline ?? -1,
-    },
-    {
-      key: "responsibility",
-      label: "Responsibility",
-      value: averageResponsibility ?? -1,
     },
   ];
 
@@ -231,7 +218,6 @@ function createPerformanceSummary(
     averageEnergy,
     averageFocus,
     averageDiscipline,
-    averageResponsibility,
     ratedDays: totalRatedDays,
     sampledRatingCount: ratings.length,
     strongestAttribute:

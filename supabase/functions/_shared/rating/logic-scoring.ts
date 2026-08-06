@@ -1,8 +1,6 @@
 import {
   LOGIC_RULESET_VERSION,
   PHYSICAL_INTENSITY_SCORE,
-  RESPONSIBILITY_EXECUTION_SCORE,
-  RESPONSIBILITY_IMPORTANCE_WEIGHT,
   SLEEP_QUALITY_ADJUSTMENT,
 } from "./constants.ts";
 
@@ -18,7 +16,6 @@ import type {
   OtherActivityRow,
   PhysicalActivityRow,
   ProductiveActivityRow,
-  ResponsibilityRow,
 } from "./types.ts";
 
 import {
@@ -45,9 +42,6 @@ const SPECIFIC_DELIVERABLE_PATTERN =
 
 const BASIC_CONTEXT_PATTERN =
   /\b(?:deadline|kuliah|kewajiban|meeting|pekerjaan|tugas)\b/iu;
-
-const RESPONSIBILITY_EVIDENCE_PATTERN =
-  /\b(?:tugas|kewajiban|deadline|pekerjaan|project|proyek|laporan|revisi|client|target|menyelesaikan|selesai|mengerjakan|membuat|memperbaiki|mengirim|follow\s*up|meeting)\b/iu;
 
 const NUMERIC_DETAIL_PATTERN =
   /\b\d+(?:[.,]\d+)?\b/u;
@@ -258,9 +252,9 @@ function scoreSleep(
   }
 
   const qualityAdjustment =
-    SLEEP_QUALITY_ADJUSTMENT[
-    sleepEntry.quality
-    ];
+    (SLEEP_QUALITY_ADJUSTMENT as Record<string, number>)[
+      sleepEntry.quality
+    ] ?? 0;
 
   const interruptionPenalty =
     sleepEntry.woke_during_sleep
@@ -292,9 +286,9 @@ function scorePhysical(
         assessment,
       }) => {
         const intensityScore =
-          PHYSICAL_INTENSITY_SCORE[
           row.intensity
-          ];
+            ? ((PHYSICAL_INTENSITY_SCORE as Record<string, number>)[row.intensity] ?? 6.0)
+            : 6.0;
 
         /*
          * No breadth or quantity bonus.
@@ -513,201 +507,6 @@ function scoreFocus(
 }
 
 /* ============================================================
- * RESPONSIBILITY
- * ============================================================
- */
-
-function hasResponsibilityEvidence(
-  activity: ProductiveActivityRow,
-): boolean {
-  const text = [
-    activity.title,
-    activity.description,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .normalize("NFKC");
-
-  if (!text) {
-    return false;
-  }
-
-  return RESPONSIBILITY_EVIDENCE_PATTERN.test(text);
-}
-
-function responsibilityCompletionRatio(
-  responsibilities: Array<
-    AssessedRow<ResponsibilityRow>
-  >,
-): number | null {
-  if (
-    responsibilities.length === 0
-  ) {
-    return null;
-  }
-
-  let weightedScore = 0;
-  let totalWeight = 0;
-
-  for (
-    const {
-      row,
-      assessment,
-    } of responsibilities
-  ) {
-    const importanceWeight =
-      RESPONSIBILITY_IMPORTANCE_WEIGHT[
-      row.importance
-      ];
-
-    const executionScore =
-      RESPONSIBILITY_EXECUTION_SCORE[
-      row.execution_status
-      ];
-
-    const completionStrength =
-      evidenceStrength(
-        row.description,
-      );
-
-    const evidenceMultiplier =
-      0.45 +
-      completionStrength * 0.4 +
-      assessment.qualityScore *
-        0.15;
-
-    weightedScore +=
-      executionScore *
-      evidenceMultiplier *
-      importanceWeight;
-
-    totalWeight +=
-      importanceWeight;
-  }
-
-  if (totalWeight === 0) {
-    return null;
-  }
-
-  return (
-    clamp(
-      weightedScore /
-      totalWeight,
-    ) / 10
-  );
-}
-
-function scoreResponsibility(
-  responsibilities: Array<
-    AssessedRow<ResponsibilityRow>
-  >,
-
-  productive: Array<
-    AssessedRow<ProductiveActivityRow>
-  >,
-
-  other: Array<
-    AssessedRow<OtherActivityRow>
-  >,
-): {
-  score: number;
-  completionRatio: number | null;
-} {
-  const completionRatio =
-    responsibilityCompletionRatio(
-      responsibilities,
-    );
-
-  const responsibilityScore =
-    completionRatio === null
-      ? null
-      : completionRatio * 10;
-
-  const productiveEvidenceScore =
-    productive.length === 0
-      ? null
-      : round1(
-        clamp(
-          average(
-            productive.flatMap(
-              ({ row, assessment }) => {
-                if (
-                  !hasResponsibilityEvidence(
-                    row,
-                  )
-                ) {
-                  return [];
-                }
-
-                return [
-                  clamp(
-                    1.5 +
-                      assessment.qualityScore *
-                      1.3 +
-                      evidenceStrength(
-                        row.title,
-                        row.description,
-                      ) *
-                      2.6,
-                    0,
-                    7.5,
-                  ),
-                ];
-              },
-            ),
-          ),
-          0,
-          7.5,
-        ),
-      );
-
-  const otherScore =
-    scoreOtherEvidence(other);
-
-  return {
-    score: round1(
-      clamp(
-        weightedAverage([
-          {
-            score:
-              responsibilityScore ??
-              0,
-
-            weight:
-              responsibilityScore ===
-                null
-                ? 0
-                : 0.8,
-          },
-          {
-            score:
-              productiveEvidenceScore ??
-              0,
-
-            weight:
-              productiveEvidenceScore ===
-                null
-                ? 0
-                : 0.15,
-          },
-          {
-            score:
-              otherScore ?? 0,
-
-            weight:
-              otherScore === null
-                ? 0
-                : 0.05,
-          },
-        ]),
-      ),
-    ),
-
-    completionRatio,
-  };
-}
-
-/* ============================================================
  * PERSONAL BASELINE
  * ============================================================
  */
@@ -751,12 +550,6 @@ export function calculateLogicScores(
       integrity.productive,
     );
 
-  const responsibilities =
-    acceptedRows(
-      input.responsibilities,
-      integrity.responsibilities,
-    );
-
   const other =
     acceptedRows(
       input.otherActivities,
@@ -781,18 +574,7 @@ export function calculateLogicScores(
         row.classified_attribute ===
         "discipline",
     ),
-
-    responsibility: other.filter(
-      ({ row }) =>
-        row.classified_attribute ===
-        "responsibility",
-    ),
   };
-
-  const productiveResponsibilityEvidence =
-    productive.filter(({ row }) =>
-      hasResponsibilityEvidence(row),
-    );
 
   const hasData = {
     energy:
@@ -809,28 +591,12 @@ export function calculateLogicScores(
     discipline:
       integrity.metrics
         .acceptedEvidenceCount > 0,
-
-    responsibility:
-      responsibilities.length > 0 ||
-      otherByAttribute
-        .responsibility.length > 0 ||
-      productiveResponsibilityEvidence
-        .length > 0,
   };
 
   const validationFlags: string[] = [
     LOGIC_RULESET_VERSION,
     ...integrity.validationFlags,
   ];
-
-  if (
-    productiveResponsibilityEvidence.length >
-    0
-  ) {
-    validationFlags.push(
-      "productive_activity_used_as_responsibility_evidence",
-    );
-  }
 
   if (
     input.dailyMatch
@@ -855,7 +621,6 @@ export function calculateLogicScores(
         energy: 0,
         focus: 0,
         discipline: 0,
-        responsibility: 0,
       },
 
       baselineApplied: false,
@@ -865,7 +630,6 @@ export function calculateLogicScores(
         energy: 0,
         focus: 0,
         discipline: 0,
-        responsibility: 0,
       },
 
       integrity,
@@ -880,10 +644,6 @@ export function calculateLogicScores(
         energyEvidenceCount: 0,
         focusEvidenceCount: 0,
         disciplineEvidenceCount: 0,
-        responsibilityEvidenceCount: 0,
-
-        responsibilityCompletionRatio:
-          null,
 
         databaseInputCount:
           input.dailyMatch
@@ -928,24 +688,6 @@ export function calculateLogicScores(
       )
       : 0;
 
-  const rawResponsibilityResult =
-    hasData.responsibility
-      ? scoreResponsibility(
-        responsibilities,
-        productiveResponsibilityEvidence,
-        otherByAttribute
-          .responsibility,
-      )
-      : {
-        score: 0,
-        completionRatio: null,
-      };
-
-  /*
-   * Konflik durasi tidak membuktikan user berbohong.
-   * Namun data tersebut tidak cukup konsisten untuk
-   * mendukung rating tinggi atau adjustment AI.
-   */
   const focus =
     integrity.metrics
       .timePlausibilityConflict
@@ -955,36 +697,16 @@ export function calculateLogicScores(
       )
       : rawFocus;
 
-  const responsibilityResult =
-    integrity.metrics
-      .timePlausibilityConflict
-      ? {
-        ...rawResponsibilityResult,
-
-        score: Math.min(
-          rawResponsibilityResult
-            .score,
-          6.0,
-        ),
-      }
-      : rawResponsibilityResult;
-
   const directCoverage =
     [
       hasData.energy,
       hasData.focus,
-      hasData.responsibility,
-    ].filter(Boolean).length / 3;
-
-  const completionRatio =
-    responsibilityResult
-      .completionRatio ?? 0;
+    ].filter(Boolean).length / 2;
 
   const counterproductiveEvidenceCount =
     [
       ...integrity.physical,
       ...integrity.productive,
-      ...integrity.responsibilities,
       ...integrity.other,
     ].filter((assessment) =>
       assessment.flags.includes(
@@ -1023,21 +745,16 @@ export function calculateLogicScores(
     integrity.metrics
       .acceptanceRatio;
 
-  /*
-   * Discipline measures clean, reliable execution
-   * and coverage. It does not reward raw quantity.
-   */
   const discipline =
     hasData.discipline
       ? round1(
         clamp(
           1.0 +
-          directCoverage * 1.4 +
-          reliableEvidence * 2.2 +
-          completionRatio * 2.2 +
+          directCoverage * 2.0 +
+          reliableEvidence * 3.0 +
           integrity.metrics
             .acceptanceRatio *
-          0.8 -
+          1.0 -
           integrityPenalty,
           0,
           9.2,
@@ -1050,9 +767,6 @@ export function calculateLogicScores(
     energy,
     focus,
     discipline,
-
-    responsibility:
-      responsibilityResult.score,
   };
 
   const baselineReady = Boolean(
@@ -1078,10 +792,6 @@ export function calculateLogicScores(
         discipline:
           input.baseline!
             .discipline_baseline,
-
-        responsibility:
-          input.baseline!
-            .responsibility_baseline,
       }
       : null;
 
@@ -1121,17 +831,6 @@ export function calculateLogicScores(
           config.personal_weight,
         )
         : universal.discipline,
-
-    responsibility:
-      hasData.responsibility &&
-        baseline
-        ? blendWithBaseline(
-          universal.responsibility,
-          baseline.responsibility,
-          config.universal_weight,
-          config.personal_weight,
-        )
-        : universal.responsibility,
   };
 
   validationFlags.push(
@@ -1194,17 +893,6 @@ export function calculateLogicScores(
       disciplineEvidenceCount:
         integrity.metrics
           .acceptedEvidenceCount,
-
-      responsibilityEvidenceCount:
-        responsibilities.length +
-        otherByAttribute
-          .responsibility.length +
-        productiveResponsibilityEvidence
-          .length,
-
-      responsibilityCompletionRatio:
-        responsibilityResult
-          .completionRatio,
 
       databaseInputCount:
         input.dailyMatch

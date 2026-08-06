@@ -101,8 +101,6 @@ export default async function PublicProfilePage({
       profile.performance.averageFocus,
     averageDiscipline:
       profile.performance.averageDiscipline,
-    averageResponsibility:
-      profile.performance.averageResponsibility,
     ratingCount:
       profile.performance.sampledRatingCount,
   };

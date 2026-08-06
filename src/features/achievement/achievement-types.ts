@@ -24,12 +24,6 @@ export const ACHIEVEMENT_DEFINITIONS = [
       "Terbuka saat focus rating mencapai ambang tinggi.",
   },
   {
-    key: "responsible",
-    title: "Responsible",
-    description:
-      "Terbuka saat responsibility rating mencapai ambang tinggi.",
-  },
-  {
     key: "elite_performance",
     title: "Elite Performance",
     description:

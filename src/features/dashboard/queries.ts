@@ -77,11 +77,9 @@ const DAILY_RATING_SELECT = `
   energy_has_data,
   focus_has_data,
   discipline_has_data,
-  responsibility_has_data,
   energy_rating,
   focus_rating,
   discipline_rating,
-  responsibility_rating,
   overall_rating,
   source,
   provider_used,
@@ -292,35 +290,22 @@ function normalizeDailyRating(
     energy_has_data: asBoolean(
       row.energy_has_data,
     ),
-
     focus_has_data: asBoolean(
       row.focus_has_data,
     ),
-
     discipline_has_data: asBoolean(
       row.discipline_has_data,
-    ),
-
-    responsibility_has_data: asBoolean(
-      row.responsibility_has_data,
     ),
 
     energy_rating: toNullableNumber(
       row.energy_rating,
     ),
-
     focus_rating: toNullableNumber(
       row.focus_rating,
     ),
-
     discipline_rating: toNullableNumber(
       row.discipline_rating,
     ),
-
-    responsibility_rating: toNullableNumber(
-      row.responsibility_rating,
-    ),
-
     overall_rating: toNullableNumber(
       row.overall_rating,
     ),
@@ -416,13 +401,6 @@ function createRatingAggregate(
       ),
     ),
 
-    averageResponsibility: average(
-      ratings.map(
-        (rating) =>
-          rating.responsibility_rating,
-      ),
-    ),
-
     ratingCount: ratings.length,
   };
 }
@@ -435,8 +413,6 @@ function createCalendarRating(
     energy_rating: rating.energy_rating,
     focus_rating: rating.focus_rating,
     discipline_rating: rating.discipline_rating,
-    responsibility_rating:
-      rating.responsibility_rating,
     source: rating.source,
   };
 }
@@ -469,9 +445,9 @@ export async function getDashboardData(
     profileResult,
     appConfigResult,
     matchesResult,
-    ratingsResult,
+    recentRatingsResult,
     bestRatingResult,
-    achievementsResult,
+    achievements,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -482,7 +458,7 @@ export async function getDashboardData(
     supabase
       .from("app_config")
       .select(APP_CONFIG_SELECT)
-      .eq("singleton", true)
+      .limit(1)
       .maybeSingle(),
 
     supabase
@@ -498,11 +474,10 @@ export async function getDashboardData(
       .from("daily_ratings")
       .select(DAILY_RATING_SELECT)
       .eq("user_id", user.id)
-      .not("overall_rating", "is", null)
       .order("created_at", {
         ascending: false,
       })
-      .limit(CALENDAR_DATA_LIMIT),
+      .limit(RECENT_RATING_LIMIT),
 
     supabase
       .from("daily_ratings")
@@ -513,174 +488,122 @@ export async function getDashboardData(
         ascending: false,
       })
       .order("created_at", {
-        ascending: true,
+        ascending: false,
       })
       .limit(1)
       .maybeSingle(),
 
-    getAchievementCollection(
-      supabase,
-      user.id,
-    ),
+    getAchievementCollection(supabase, user.id),
   ]);
 
   addWarning(
     warnings,
-    "Profile query failed",
+    "profiles query",
     profileResult.error,
   );
-
   addWarning(
     warnings,
-    "App config query failed",
+    "app_config query",
     appConfigResult.error,
   );
-
   addWarning(
     warnings,
-    "Daily matches query failed",
+    "daily_matches query",
     matchesResult.error,
   );
-
   addWarning(
     warnings,
-    "Daily ratings query failed",
-    ratingsResult.error,
+    "daily_ratings recent query",
+    recentRatingsResult.error,
   );
-
   addWarning(
     warnings,
-    "Best rating query failed",
+    "daily_ratings best query",
     bestRatingResult.error,
   );
 
   const profile = normalizeProfile(
     profileResult.data,
   );
-
   const appConfig = normalizeAppConfig(
     appConfigResult.data,
   );
 
+  const timeZone =
+    profile?.timezone ?? DEFAULT_TIME_ZONE;
+
   const matches = normalizeMatches(
     matchesResult.data,
   );
-
-  const ratings = normalizeRatings(
-    ratingsResult.data,
+  const recentRatings = normalizeRatings(
+    recentRatingsResult.data,
   );
 
-  /*
-   * Rata-rata dihitung di server Next.js dari maksimal
-   * 60 daily rating terbaru.
-   *
-   * Kita tidak memakai fungsi aggregate PostgREST karena
-   * aggregate functions tidak diaktifkan pada Supabase ini.
-   */
-  const recentRatings = ratings.slice(
-    0,
-    RECENT_RATING_LIMIT,
-  );
+  const todayKey =
+    getDateKeyForTimeZone(new Date(), timeZone);
 
-  const aggregate = createRatingAggregate(
-    recentRatings,
-  );
+  const todayMatch =
+    matches.find(
+      (match) => match.match_date === todayKey,
+    ) ?? null;
 
   const ratingByMatchId = new Map<
     string,
     DailyRatingRow
-  >(
-    ratings.map((rating) => [
-      rating.daily_match_id,
-      rating,
-    ]),
-  );
+  >();
 
-  const timeZone =
-  matches.at(0)?.timezone ??
-  profile?.timezone ??
-  DEFAULT_TIME_ZONE;
-
-  const todayDate = getDateKeyForTimeZone(
-    new Date(),
-    timeZone,
-  );
-
-  const todayMatch =
-    matches.find(
-      (match) =>
-        match.match_date === todayDate,
-    ) ?? null;
+  recentRatings.forEach((rating) => {
+    if (!ratingByMatchId.has(rating.daily_match_id)) {
+      ratingByMatchId.set(
+        rating.daily_match_id,
+        rating,
+      );
+    }
+  });
 
   const todayRating = todayMatch
-    ? ratingByMatchId.get(todayMatch.id) ??
-      null
+    ? ratingByMatchId.get(todayMatch.id) ?? null
     : null;
 
-  const latestRating =
-    ratings.at(0) ?? null;
+  const latestRating = recentRatings[0] ?? null;
 
   const latestRatingMatch = latestRating
     ? matches.find(
         (match) =>
-          match.id ===
-          latestRating.daily_match_id,
+          match.id === latestRating.daily_match_id,
       ) ?? null
     : null;
 
-  let bestRating = normalizeDailyRating(
+  const rawBestRating = normalizeDailyRating(
     bestRatingResult.data,
   );
 
-  if (!bestRating) {
-    bestRating =
-      [...ratings].sort(
-        (first, second) =>
-          (second.overall_rating ?? -1) -
-          (first.overall_rating ?? -1),
-      )[0] ?? null;
-  }
+  let bestPerformance: DashboardData["bestPerformance"] =
+    null;
 
-  let bestMatch = bestRating
-    ? matches.find(
+  if (rawBestRating) {
+    const matchedMatch =
+      matches.find(
         (match) =>
-          match.id ===
-          bestRating.daily_match_id,
-      ) ?? null
-    : null;
+          match.id === rawBestRating.daily_match_id,
+      ) ?? null;
 
-  /*
-   * Data utama mengambil rentang kalender terbaru.
-   * Jika best rating berada di luar rentang itu, ambil
-   * daily match terkait secara terpisah.
-   */
-  if (bestRating && !bestMatch) {
-    const bestMatchResult = await supabase
-      .from("daily_matches")
-      .select(DAILY_MATCH_SELECT)
-      .eq("id", bestRating.daily_match_id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    addWarning(
-      warnings,
-      "Best performance date query failed",
-      bestMatchResult.error,
-    );
-
-    bestMatch = normalizeDailyMatch(
-      bestMatchResult.data,
-    );
+    bestPerformance = {
+      match: matchedMatch,
+      rating: rawBestRating,
+    };
   }
+
+  const aggregate =
+    createRatingAggregate(recentRatings);
 
   const history = matches
-    .slice(0, 30)
     .map((match) => ({
       match,
       rating:
-        ratingByMatchId.get(match.id) ??
-        null,
-    }));
+        ratingByMatchId.get(match.id) ?? null,
+    }))
+    .slice(0, 30);
 
   const calendarDays = createCalendarDays(
     matches,
@@ -691,25 +614,29 @@ export async function getDashboardData(
     profile,
     appConfig,
     timeZone,
-
     todayMatch,
     todayRating,
-
     latestRating,
     latestRatingMatch,
-
-    bestPerformance: bestRating
-      ? {
-          rating: bestRating,
-          match: bestMatch,
-        }
-      : null,
-
+    bestPerformance,
     aggregate,
     history,
     calendarDays,
-    achievements: achievementsResult,
+    achievements,
     warnings,
+  };
+}
+
+export async function getCalendarPageData(
+  supabase: SupabaseClient,
+  user: User,
+) {
+  const dashboard = await getDashboardData(supabase, user);
+
+  return {
+    timeZone: dashboard.timeZone,
+    calendarDays: dashboard.calendarDays,
+    warnings: dashboard.warnings,
   };
 }
 
@@ -721,119 +648,13 @@ export async function getDailyRatingForMatch(
   const { data, error } = await supabase
     .from("daily_ratings")
     .select(DAILY_RATING_SELECT)
-    .eq("user_id", user.id)
     .eq("daily_match_id", dailyMatchId)
+    .eq("user_id", user.id)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(
-      `Daily rating gagal dimuat: ${error.message}`,
-    );
+  if (error || !data) {
+    return null;
   }
 
   return normalizeDailyRating(data);
-}
-
-export type CalendarPageData = {
-  timeZone: string;
-  calendarDays: PerformanceCalendarDay[];
-  ratedCount: number;
-  warnings: string[];
-};
-
-export async function getCalendarPageData(
-  supabase: SupabaseClient,
-  user: User,
-): Promise<CalendarPageData> {
-  const warnings: string[] = [];
-
-  const [
-    profileResult,
-    matchesResult,
-    ratingsResult,
-  ] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select(PROFILE_SELECT)
-      .eq("id", user.id)
-      .maybeSingle(),
-
-    supabase
-      .from("daily_matches")
-      .select(DAILY_MATCH_SELECT)
-      .eq("user_id", user.id)
-      .order("match_date", {
-        ascending: false,
-      })
-      .limit(CALENDAR_DATA_LIMIT),
-
-    supabase
-      .from("daily_ratings")
-      .select(DAILY_RATING_SELECT)
-      .eq("user_id", user.id)
-      .not("overall_rating", "is", null)
-      .order("created_at", {
-        ascending: false,
-      })
-      .limit(CALENDAR_DATA_LIMIT),
-  ]);
-
-  addWarning(
-    warnings,
-    "Profile query failed",
-    profileResult.error,
-  );
-
-  addWarning(
-    warnings,
-    "Daily matches query failed",
-    matchesResult.error,
-  );
-
-  addWarning(
-    warnings,
-    "Daily ratings query failed",
-    ratingsResult.error,
-  );
-
-  const profile = normalizeProfile(
-    profileResult.data,
-  );
-
-  const matches = normalizeMatches(
-    matchesResult.data,
-  );
-
-  const ratings = normalizeRatings(
-    ratingsResult.data,
-  );
-
-  const ratingByMatchId = new Map<
-    string,
-    DailyRatingRow
-  >(
-    ratings.map((rating) => [
-      rating.daily_match_id,
-      rating,
-    ]),
-  );
-
-  const timeZone =
-    matches.at(0)?.timezone ??
-    profile?.timezone ??
-    DEFAULT_TIME_ZONE;
-
-  const calendarDays = createCalendarDays(
-    matches,
-    ratingByMatchId,
-  );
-
-  const ratedCount = ratings.length;
-
-  return {
-    timeZone,
-    calendarDays,
-    ratedCount,
-    warnings,
-  };
 }

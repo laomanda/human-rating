@@ -51,12 +51,10 @@ export type DailyRatingRow = {
   energy_has_data: boolean;
   focus_has_data: boolean;
   discipline_has_data: boolean;
-  responsibility_has_data: boolean;
 
   energy_rating: number | null;
   focus_rating: number | null;
   discipline_rating: number | null;
-  responsibility_rating: number | null;
   overall_rating: number | null;
 
   source: string;
@@ -71,7 +69,6 @@ export type PerformanceCalendarRating = {
   energy_rating: number | null;
   focus_rating: number | null;
   discipline_rating: number | null;
-  responsibility_rating: number | null;
   source: string;
 };
 
@@ -86,7 +83,6 @@ export type DashboardAggregate = {
   averageEnergy: number | null;
   averageFocus: number | null;
   averageDiscipline: number | null;
-  averageResponsibility: number | null;
   ratingCount: number;
 };
 

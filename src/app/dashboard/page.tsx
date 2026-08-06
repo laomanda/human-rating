@@ -26,9 +26,9 @@ import {
 } from "@/features/dashboard/formatters";
 
 import { DimensionProgress } from "@/features/dashboard/dimension-progress";
-import { PerformanceChart } from "@/features/dashboard/perfomance-chart";
+import { PerformanceChart } from "@/features/dashboard/performance-chart";
 import { PerformanceCalendar } from "@/features/dashboard/performance-calendar";
-import { PerformanceHistory } from "@/features/dashboard/perfomance-history";
+import { PerformanceHistory } from "@/features/dashboard/performance-history";
 import { getDashboardData } from "@/features/dashboard/queries";
 import { RatingMetadata } from "@/features/dashboard/rating-metadata";
 import { RatingSummary } from "@/features/dashboard/rating-summary";
@@ -245,10 +245,6 @@ export default async function DashboardPage() {
               }
               discipline_rating={
                 displayedRating.discipline_rating
-              }
-              responsibility_rating={
-                displayedRating
-                  .responsibility_rating
               }
               source={displayedRating.source}
               status={
@@ -475,14 +471,6 @@ export default async function DashboardPage() {
                   value={formatScore(
                     dashboard.bestPerformance.rating
                       .discipline_rating,
-                  )}
-                />
-
-                <DataItem
-                  label="Responsibility"
-                  value={formatScore(
-                    dashboard.bestPerformance.rating
-                      .responsibility_rating,
                   )}
                 />
               </dl>
