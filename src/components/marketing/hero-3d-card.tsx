@@ -1,11 +1,22 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
+import { useTheme } from "next-themes";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 
 export function Hero3DCard() {
   const cardRef = useRef<HTMLDivElement>(null);
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Determine showcase image dynamically based on active resolved theme
+  const isLight = mounted && resolvedTheme === "light";
+  const imageSrc = isLight ? "/images/preview-white.webp" : "/images/preview-dark.webp";
 
   // Raw mouse coordinates relative to center (-0.5 to 0.5)
   const x = useMotionValue(0);
@@ -76,12 +87,13 @@ export function Hero3DCard() {
           style={{ transform: "translateZ(30px)" }}
         >
           <Image
-            src="/images/preview.webp"
+            key={imageSrc}
+            src={imageSrc}
             alt="HuMob Performance Rating Showcase"
             width={1200}
             height={800}
             priority
-            className="w-full h-auto object-cover rounded-xl transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+            className="w-full h-auto object-cover rounded-xl transition-all duration-500 ease-out group-hover:scale-[1.02]"
           />
         </div>
       </motion.div>

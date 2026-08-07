@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Play, Sparkles } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Hero3DCard } from "@/components/marketing/hero-3d-card";
@@ -27,7 +27,7 @@ export function HeroSection() {
 
   return (
     <section className="relative overflow-hidden min-h-[calc(100dvh-4rem)] flex items-center justify-center py-8">
-      {/* 3D Animated Background Grid & Orbs */}
+      {/* 3D Animated Background Video */}
       <Hero3DBackground />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full">
@@ -44,7 +44,7 @@ export function HeroSection() {
               className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.15]"
             >
               Ukur Performa Harianmu{" "}
-              <span className="block h-[1.3em] overflow-hidden py-1">
+              <span className="block h-[1.35em] overflow-hidden py-1">
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={DYNAMIC_KEYWORDS[index]}
@@ -56,7 +56,7 @@ export function HeroSection() {
                       stiffness: 300,
                       damping: 25,
                     }}
-                    className="inline-block bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm"
+                    className="inline-block bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 dark:from-emerald-400 dark:via-teal-300 dark:to-cyan-400 bg-clip-text text-transparent drop-shadow-sm font-extrabold"
                   >
                     {DYNAMIC_KEYWORDS[index]}
                   </motion.span>
@@ -78,10 +78,10 @@ export function HeroSection() {
                 </Link>
               </Button>
 
-              <Button asChild variant="outline" size="lg" className="border-border hover:bg-accent active:scale-[0.985] transition-all hover:scale-105">
+              <Button asChild variant="outline" size="lg" className="border-border bg-background/80 hover:bg-accent text-foreground font-medium shadow-sm transition-all hover:scale-105 active:scale-95">
                 <a href="#how-it-works">
-                  <Play className="h-4 w-4 text-emerald-500 fill-emerald-500/20 mr-1.5" />
-                  <span>Lihat Cara Kerja</span>
+                  <Play className="h-4 w-4 text-emerald-600 dark:text-emerald-400 fill-emerald-500/20 mr-1.5" />
+                  <span className="text-foreground font-medium">Lihat Cara Kerja</span>
                 </a>
               </Button>
             </motion.div>
