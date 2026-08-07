@@ -27,8 +27,26 @@ export const PRODUCTIVE_CATEGORIES = [
   "other",
 ] as const;
 
+export const OTHER_CATEGORIES = [
+  "rest",
+  "social",
+  "hobby",
+  "meditation",
+  "planning",
+  "other",
+] as const;
+
+export const SLEEP_QUALITIES = [
+  "very_low",
+  "low",
+  "moderate",
+  "good",
+  "very_good",
+] as const;
+
 export const DAILY_MATCH_STATUSES = [
   "open",
+  "editable",
   "locked",
   "queued",
   "processing",
@@ -36,17 +54,12 @@ export const DAILY_MATCH_STATUSES = [
   "failed",
 ] as const;
 
-export type PhysicalActivityType =
-  (typeof PHYSICAL_ACTIVITY_TYPES)[number];
-
-export type ActivityIntensity =
-  (typeof ACTIVITY_INTENSITIES)[number];
-
-export type ProductiveCategory =
-  (typeof PRODUCTIVE_CATEGORIES)[number];
-
-export type DailyMatchStatus =
-  (typeof DAILY_MATCH_STATUSES)[number];
+export type PhysicalActivityType = (typeof PHYSICAL_ACTIVITY_TYPES)[number];
+export type ActivityIntensity = (typeof ACTIVITY_INTENSITIES)[number];
+export type ProductiveCategory = (typeof PRODUCTIVE_CATEGORIES)[number];
+export type OtherCategory = (typeof OTHER_CATEGORIES)[number];
+export type SleepQuality = (typeof SLEEP_QUALITIES)[number];
+export type DailyMatchStatus = (typeof DAILY_MATCH_STATUSES)[number];
 
 export type DailyMatch = {
   id: string;
@@ -62,6 +75,20 @@ export type DailyMatch = {
   queued_at: string | null;
   processing_started_at: string | null;
   rated_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SleepEntry = {
+  id: string;
+  daily_match_id: string;
+  user_id: string;
+  sleep_started_at: string | null;
+  woke_at: string | null;
+  duration_minutes: number;
+  quality: SleepQuality;
+  woke_during_sleep: boolean;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -97,10 +124,28 @@ export type ProductiveActivity = {
   updated_at: string;
 };
 
+export type OtherActivity = {
+  id: string;
+  client_instance_id: string;
+  daily_match_id: string;
+  user_id: string;
+  category: OtherCategory;
+  title: string;
+  description: string;
+  duration_minutes: number | null;
+  normalized_signature: string;
+  source_template_id: string | null;
+  validation_flags: unknown;
+  created_at: string;
+  updated_at: string;
+};
+
 export type TodayActivityData = {
   dailyMatch: DailyMatch | null;
+  sleepEntry: SleepEntry | null;
   physicalActivities: PhysicalActivity[];
   productiveActivities: ProductiveActivity[];
+  otherActivities: OtherActivity[];
 };
 
 export type ActivityFieldErrors = Record<string, string[]>;

@@ -14,12 +14,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import {
+  OtherActivityList,
   PhysicalActivityList,
   ProductiveActivityList,
 } from "@/components/activities/activity-list";
 
+import { OtherActivityForm } from "@/components/activities/other-activity-form";
 import { PhysicalActivityForm } from "@/components/activities/physical-activity-form";
 import { ProductiveActivityForm } from "@/components/activities/productive-activity-form";
+import { SleepEntryForm } from "@/components/activities/sleep-entry-form";
 
 import { DailyMatchLiveStatus } from "@/components/daily-match/daily-match-live-status";
 
@@ -41,6 +44,7 @@ import { createClient } from "@/lib/supabase/server";
 
 type DailyMatchStatus =
   | "open"
+  | "editable"
   | "locked"
   | "queued"
   | "processing"
@@ -51,6 +55,7 @@ const DAILY_MATCH_STATUS_LABELS: Readonly<
   Record<DailyMatchStatus, string>
 > = {
   open: "Terbuka",
+  editable: "Terbuka",
   locked: "Input ditutup",
   queued: "Menunggu penilaian",
   processing: "Sedang dinilai",
@@ -135,8 +140,7 @@ export default async function TodayMatchPage() {
             </div>
 
             <p className="mt-2 text-sm leading-6 text-zinc-500">
-              Catat aktivitas yang benar-benar
-              dilakukan sebelum batas input berakhir.
+              Catat seluruh 4 kategori aktivitas pendukung (Tidur, Fisik, Produktif, dan Pendukung/Pemulihan) sebelum batas input berakhir.
             </p>
           </div>
 
@@ -253,20 +257,26 @@ export default async function TodayMatchPage() {
       {canEdit ? (
         <section
           aria-labelledby="activity-input-title"
-          className="space-y-4"
+          className="space-y-6"
         >
           <div>
             <h2
               id="activity-input-title"
-              className="font-semibold tracking-tight text-white"
+              className="text-xl font-semibold tracking-tight text-white"
             >
-              Tambahkan Aktivitas
+              Form Input Aktivitas Harian (4 Kategori)
             </h2>
 
             <p className="mt-1 text-sm text-zinc-500">
-              Masukkan aktivitas fisik dan produktif
-              yang dilakukan hari ini.
+              Lengkapi catatan tidur, aktivitas fisik, aktivitas produktif, dan kegiatan pendukung/pemulihan hari ini.
             </p>
+          </div>
+
+          <div className="rounded-2xl border border-app-border bg-app-surface p-5 sm:p-6">
+            <SleepEntryForm
+              dailyMatchId={dailyMatch.id}
+              initialEntry={data.sleepEntry}
+            />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
@@ -282,6 +292,12 @@ export default async function TodayMatchPage() {
               />
             </div>
           </div>
+
+          <div className="rounded-2xl border border-app-border bg-app-surface p-5 sm:p-6">
+            <OtherActivityForm
+              dailyMatchId={dailyMatch.id}
+            />
+          </div>
         </section>
       ) : null}
 
@@ -292,18 +308,17 @@ export default async function TodayMatchPage() {
         <div>
           <h2
             id="activity-list-title"
-            className="font-semibold tracking-tight text-white"
+            className="text-xl font-semibold tracking-tight text-white"
           >
-            Aktivitas Hari Ini
+            Daftar Aktivitas Tersimpan Hari Ini
           </h2>
 
           <p className="mt-1 text-sm text-zinc-500">
-            Aktivitas yang sudah tersimpan pada Daily
-            Match ini.
+            Seluruh aktivitas yang telah dicatat pada Daily Match ini.
           </p>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-2">
+        <div className="grid gap-6 xl:grid-cols-3">
           <PhysicalActivityList
             activities={
               data.physicalActivities
@@ -314,6 +329,13 @@ export default async function TodayMatchPage() {
           <ProductiveActivityList
             activities={
               data.productiveActivities
+            }
+            canEdit={canEdit}
+          />
+
+          <OtherActivityList
+            activities={
+              data.otherActivities
             }
             canEdit={canEdit}
           />
@@ -350,7 +372,7 @@ function RatingUnavailable() {
 function getDailyMatchStatusLabel(
   status: DailyMatchStatus,
 ): string {
-  return DAILY_MATCH_STATUS_LABELS[status];
+  return DAILY_MATCH_STATUS_LABELS[status] ?? status;
 }
 
 function StatusBadge({

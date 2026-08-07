@@ -5,6 +5,7 @@ import {
   BriefcaseBusiness,
   Clock3,
   Edit3,
+  Heart,
   X,
 } from "lucide-react";
 
@@ -13,6 +14,7 @@ import { useState } from "react";
 import { ActivityDeleteButton } from "@/components/activities/activity-delete-button";
 import { PhysicalActivityForm } from "@/components/activities/physical-activity-form";
 import { ProductiveActivityForm } from "@/components/activities/productive-activity-form";
+import { OtherActivityForm } from "@/components/activities/other-activity-form";
 
 import {
   formatActivityIntensity,
@@ -21,6 +23,7 @@ import {
 } from "@/features/activities/formatters";
 
 import type {
+  OtherActivity,
   PhysicalActivity,
   ProductiveActivity,
 } from "@/features/activities/types";
@@ -37,9 +40,16 @@ type ProductiveActivityItemProps = {
   canEdit: boolean;
 };
 
+type OtherActivityItemProps = {
+  kind: "other";
+  activity: OtherActivity;
+  canEdit: boolean;
+};
+
 type ActivityItemProps =
   | PhysicalActivityItemProps
-  | ProductiveActivityItemProps;
+  | ProductiveActivityItemProps
+  | OtherActivityItemProps;
 
 export function ActivityItem(
   props: ActivityItemProps,
@@ -67,23 +77,23 @@ export function ActivityItem(
 
         {props.kind === "physical" ? (
           <PhysicalActivityForm
-            dailyMatchId={
-              props.activity.daily_match_id
-            }
+            dailyMatchId={props.activity.daily_match_id}
+            activity={props.activity}
+            onSuccess={() => {
+              setIsEditing(false);
+            }}
+          />
+        ) : props.kind === "productive" ? (
+          <ProductiveActivityForm
+            dailyMatchId={props.activity.daily_match_id}
             activity={props.activity}
             onSuccess={() => {
               setIsEditing(false);
             }}
           />
         ) : (
-          <ProductiveActivityForm
-            dailyMatchId={
-              props.activity.daily_match_id
-            }
-            activity={props.activity}
-            onSuccess={() => {
-              setIsEditing(false);
-            }}
+          <OtherActivityForm
+            dailyMatchId={props.activity.daily_match_id}
           />
         )}
       </article>
@@ -98,8 +108,10 @@ export function ActivityItem(
             <div className="mt-0.5 rounded-xl border border-white/10 bg-white/5 p-2.5 text-zinc-400">
               {props.kind === "physical" ? (
                 <Activity className="h-5 w-5" />
-              ) : (
+              ) : props.kind === "productive" ? (
                 <BriefcaseBusiness className="h-5 w-5" />
+              ) : (
+                <Heart className="h-5 w-5 text-purple-400" />
               )}
             </div>
 
@@ -108,8 +120,12 @@ export function ActivityItem(
                 <PhysicalContent
                   activity={props.activity}
                 />
-              ) : (
+              ) : props.kind === "productive" ? (
                 <ProductiveContent
+                  activity={props.activity}
+                />
+              ) : (
+                <OtherContent
                   activity={props.activity}
                 />
               )}
@@ -213,6 +229,36 @@ function ProductiveContent({
             activity.category,
           )}
         </span>
+      </div>
+
+      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-400">
+        {activity.description}
+      </p>
+    </>
+  );
+}
+
+function OtherContent({
+  activity,
+}: {
+  activity: OtherActivity;
+}) {
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="font-medium text-white">
+          {activity.title}
+        </h3>
+
+        <span className="rounded-full border border-purple-500/20 bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-300">
+          {activity.category}
+        </span>
+
+        {activity.duration_minutes && (
+          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-zinc-400">
+            {activity.duration_minutes} m
+          </span>
+        )}
       </div>
 
       <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-400">

@@ -1,14 +1,18 @@
 import {
   ACTIVITY_INTENSITIES,
+  OTHER_CATEGORIES,
   PHYSICAL_ACTIVITY_TYPES,
   PRODUCTIVE_CATEGORIES,
+  SLEEP_QUALITIES,
 } from "@/features/activities/types";
 
 import type {
   ActivityFieldErrors,
   ActivityIntensity,
+  OtherCategory,
   PhysicalActivityType,
   ProductiveCategory,
+  SleepQuality,
 } from "@/features/activities/types";
 
 type ValidationSuccess<T> = {
@@ -24,6 +28,14 @@ type ValidationFailure = {
 export type ValidationResult<T> =
   | ValidationSuccess<T>
   | ValidationFailure;
+
+export type SleepEntryInput = {
+  dailyMatchId: string;
+  durationMinutes: number;
+  quality: SleepQuality;
+  wokeDuringSleep: boolean;
+  notes: string | null;
+};
 
 export type PhysicalActivityInput = {
   activityId: string | null;
@@ -42,6 +54,15 @@ export type ProductiveActivityInput = {
   description: string;
 };
 
+export type OtherActivityInput = {
+  activityId: string | null;
+  dailyMatchId: string;
+  category: OtherCategory;
+  title: string;
+  description: string;
+  durationMinutes: number | null;
+};
+
 export type DeleteActivityInput = {
   activityId: string;
   dailyMatchId: string;
@@ -56,6 +77,15 @@ function getString(
   return typeof value === "string"
     ? value.trim()
     : "";
+}
+
+function getBoolean(
+  formData: FormData,
+  key: string,
+): boolean {
+  const value = formData.get(key);
+
+  return value === "true" || value === "on" || value === "1";
 }
 
 function addError(
@@ -95,6 +125,66 @@ function isProductiveCategory(
   return PRODUCTIVE_CATEGORIES.includes(
     value as ProductiveCategory,
   );
+}
+
+function isOtherCategory(
+  value: string,
+): value is OtherCategory {
+  return OTHER_CATEGORIES.includes(
+    value as OtherCategory,
+  );
+}
+
+function isSleepQuality(
+  value: string,
+): value is SleepQuality {
+  return SLEEP_QUALITIES.includes(
+    value as SleepQuality,
+  );
+}
+
+export function validateSleepEntryForm(
+  formData: FormData,
+): ValidationResult<SleepEntryInput> {
+  const fieldErrors: ActivityFieldErrors = {};
+
+  const dailyMatchId = getString(formData, "daily_match_id");
+  const sleepHoursStr = getString(formData, "sleep_hours");
+  const qualityStr = getString(formData, "quality");
+  const wokeDuringSleep = getBoolean(formData, "woke_during_sleep");
+  const notes = getString(formData, "notes");
+
+  if (!isUuid(dailyMatchId)) {
+    addError(fieldErrors, "daily_match_id", "Daily Match ID is invalid.");
+  }
+
+  const hoursNum = parseFloat(sleepHoursStr);
+  if (isNaN(hoursNum) || hoursNum < 1 || hoursNum > 24) {
+    addError(fieldErrors, "sleep_hours", "Duration must be between 1 and 24 hours.");
+  }
+
+  if (!isSleepQuality(qualityStr)) {
+    addError(fieldErrors, "quality", "Select a valid sleep quality.");
+  }
+
+  if (notes.length > 500) {
+    addError(fieldErrors, "notes", "Notes cannot exceed 500 characters.");
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { success: false, fieldErrors };
+  }
+
+  return {
+    success: true,
+    data: {
+      dailyMatchId,
+      durationMinutes: Math.round(hoursNum * 60),
+      quality: qualityStr as SleepQuality,
+      wokeDuringSleep,
+      notes: notes || null,
+    },
+  };
 }
 
 export function validatePhysicalActivityForm(
@@ -345,6 +435,66 @@ export function validateProductiveActivityForm(
 
       title,
       description,
+    },
+  };
+}
+
+export function validateOtherActivityForm(
+  formData: FormData,
+  options: {
+    requireActivityId: boolean;
+  },
+): ValidationResult<OtherActivityInput> {
+  const fieldErrors: ActivityFieldErrors = {};
+
+  const activityIdValue = getString(formData, "activity_id");
+  const dailyMatchId = getString(formData, "daily_match_id");
+  const categoryValue = getString(formData, "category");
+  const title = getString(formData, "title");
+  const description = getString(formData, "description");
+  const durationStr = getString(formData, "duration_minutes");
+
+  if (options.requireActivityId && !isUuid(activityIdValue)) {
+    addError(fieldErrors, "activity_id", "Activity ID is invalid.");
+  }
+
+  if (!isUuid(dailyMatchId)) {
+    addError(fieldErrors, "daily_match_id", "Daily Match ID is invalid.");
+  }
+
+  if (!isOtherCategory(categoryValue)) {
+    addError(fieldErrors, "category", "Select a valid category.");
+  }
+
+  if (title.length < 3) {
+    addError(fieldErrors, "title", "Title must contain at least 3 characters.");
+  }
+
+  if (description.length < 5) {
+    addError(fieldErrors, "description", "Description must contain at least 5 characters.");
+  }
+
+  let durationMinutes: number | null = null;
+  if (durationStr) {
+    const dur = parseInt(durationStr, 10);
+    if (!isNaN(dur) && dur > 0) {
+      durationMinutes = dur;
+    }
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { success: false, fieldErrors };
+  }
+
+  return {
+    success: true,
+    data: {
+      activityId: options.requireActivityId ? activityIdValue : null,
+      dailyMatchId,
+      category: categoryValue as OtherCategory,
+      title,
+      description,
+      durationMinutes,
     },
   };
 }

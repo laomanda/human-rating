@@ -1,7 +1,9 @@
 export type NotificationType =
   | "daily_reminder"
   | "rating_completed"
+  | "rating_ready"
   | "achievement_unlocked"
+  | "achievement"
   | "system";
 
 export type NotificationRow = {

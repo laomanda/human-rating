@@ -40,7 +40,9 @@ function normalizeNotificationType(value: unknown): NotificationType {
   if (
     str === "daily_reminder" ||
     str === "rating_completed" ||
+    str === "rating_ready" ||
     str === "achievement_unlocked" ||
+    str === "achievement" ||
     str === "system"
   ) {
     return str;

@@ -1,63 +1,141 @@
 @import "tailwindcss";
 
-:root {
-  --background: #08090c;
-  --foreground: #f4f4f5;
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #09090b;
 
-  --app-sidebar: #0c0d11;
-  --app-surface: #111318;
-  --app-surface-muted: #171a21;
-  --app-border: #252832;
+    --card: #ffffff;
+    --card-foreground: #09090b;
 
-  --muted: #a1a1aa;
-  --muted-foreground: #71717a;
+    --popover: #ffffff;
+    --popover-foreground: #09090b;
 
-  --focus-ring: #38bdf8;
+    --primary: #059669;
+    --primary-foreground: #ffffff;
 
-  --rating-critical: #ef4444;
-  --rating-low: #f97316;
-  --rating-average: #eab308;
-  --rating-good: #22c55e;
-  --rating-excellent: #10b981;
-  --rating-elite: #06b6d4;
-  --rating-perfect: #38bdf8;
+    --secondary: #f4f4f5;
+    --secondary-foreground: #18181b;
+
+    --muted: #f4f4f5;
+    --muted-foreground: #71717a;
+
+    --accent: #f4f4f5;
+    --accent-foreground: #18181b;
+
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+
+    --border: #e4e4e7;
+    --input: #e4e4e7;
+    --ring: #059669;
+
+    --app-sidebar: #f4f4f5;
+    --app-surface: #ffffff;
+    --app-surface-muted: #f4f4f5;
+    --app-border: #e4e4e7;
+
+    --focus-ring: #059669;
+
+    --rating-critical: #ef4444;
+    --rating-low: #f97316;
+    --rating-average: #eab308;
+    --rating-good: #22c55e;
+    --rating-excellent: #10b981;
+    --rating-elite: #06b6d4;
+    --rating-perfect: #38bdf8;
+  }
+
+  .dark {
+    --background: #09090b;
+    --foreground: #f4f4f5;
+
+    --card: #18181b;
+    --card-foreground: #f4f4f5;
+
+    --popover: #18181b;
+    --popover-foreground: #f4f4f5;
+
+    --primary: #10b981;
+    --primary-foreground: #09090b;
+
+    --secondary: #27272a;
+    --secondary-foreground: #f4f4f5;
+
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+
+    --accent: #27272a;
+    --accent-foreground: #f4f4f5;
+
+    --destructive: #7f1d1d;
+    --destructive-foreground: #f4f4f5;
+
+    --border: #27272a;
+    --input: #27272a;
+    --ring: #10b981;
+
+    --app-sidebar: #09090b;
+    --app-surface: #18181b;
+    --app-surface-muted: #27272a;
+    --app-border: #27272a;
+
+    --focus-ring: #10b981;
+
+    --rating-critical: #ef4444;
+    --rating-low: #f97316;
+    --rating-average: #eab308;
+    --rating-good: #22c55e;
+    --rating-excellent: #10b981;
+    --rating-elite: #06b6d4;
+    --rating-perfect: #38bdf8;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  --color-app-sidebar: var(--app-sidebar);
-  --color-app-surface: var(--app-surface);
-  --color-app-surface-muted: var(
-    --app-surface-muted
-  );
-  --color-app-border: var(--app-border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
 
   --color-muted: var(--muted);
-  --color-muted-foreground: var(
-    --muted-foreground
-  );
+  --color-muted-foreground: var(--muted-foreground);
 
-  --color-rating-critical: var(
-    --rating-critical
-  );
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-app-sidebar: var(--app-sidebar);
+  --color-app-surface: var(--app-surface);
+  --color-app-surface-muted: var(--app-surface-muted);
+  --color-app-border: var(--app-border);
+
+  --color-rating-critical: var(--rating-critical);
   --color-rating-low: var(--rating-low);
-  --color-rating-average: var(
-    --rating-average
-  );
+  --color-rating-average: var(--rating-average);
   --color-rating-good: var(--rating-good);
-  --color-rating-excellent: var(
-    --rating-excellent
-  );
+  --color-rating-excellent: var(--rating-excellent);
   --color-rating-elite: var(--rating-elite);
-  --color-rating-perfect: var(
-    --rating-perfect
-  );
+  --color-rating-perfect: var(--rating-perfect);
 
-  --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui,
-    sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
@@ -67,7 +145,7 @@
 html {
   min-height: 100%;
   background: var(--background);
-  color-scheme: dark;
+  color-scheme: dark light;
   scroll-behavior: smooth;
 }
 
@@ -79,6 +157,10 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
 }
 
 button,
@@ -100,8 +182,37 @@ a[href] {
 }
 
 ::selection {
-  background: rgb(255 255 255 / 14%);
+  background: rgba(16, 185, 129, 0.2);
   color: var(--foreground);
+}
+
+/* Glassmorphism Light Utility Classes */
+.glass-card {
+  background: rgba(24, 24, 27, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:root:not(.dark) .glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.glass-header {
+  background: rgba(9, 9, 11, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:root:not(.dark) .glass-header {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 @media (prefers-reduced-motion: reduce) {

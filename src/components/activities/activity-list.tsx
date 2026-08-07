@@ -1,12 +1,14 @@
 import {
   Activity,
   BriefcaseBusiness,
+  Heart,
   Inbox,
 } from "lucide-react";
 
 import { ActivityItem } from "@/components/activities/activity-item";
 
 import type {
+  OtherActivity,
   PhysicalActivity,
   ProductiveActivity,
 } from "@/features/activities/types";
@@ -21,8 +23,8 @@ export function PhysicalActivityList({
   return (
     <ActivitySection
       icon={<Activity className="h-5 w-5" />}
-      title="Physical Activities"
-      description={`${activities.length} physical activity record(s)`}
+      title="Aktivitas Fisik"
+      description={`${activities.length} catatan aktivitas fisik`}
     >
       {activities.length > 0 ? (
         <div className="space-y-3">
@@ -37,7 +39,7 @@ export function PhysicalActivityList({
         </div>
       ) : (
         <EmptyActivityList
-          message="No physical activity has been recorded today."
+          message="Belum ada aktivitas fisik yang dicatat hari ini."
         />
       )}
     </ActivitySection>
@@ -56,8 +58,8 @@ export function ProductiveActivityList({
       icon={
         <BriefcaseBusiness className="h-5 w-5" />
       }
-      title="Productive Activities"
-      description={`${activities.length} productive activity record(s)`}
+      title="Aktivitas Produktif"
+      description={`${activities.length} catatan aktivitas produktif`}
     >
       {activities.length > 0 ? (
         <div className="space-y-3">
@@ -72,7 +74,40 @@ export function ProductiveActivityList({
         </div>
       ) : (
         <EmptyActivityList
-          message="No productive activity has been recorded today."
+          message="Belum ada aktivitas produktif yang dicatat hari ini."
+        />
+      )}
+    </ActivitySection>
+  );
+}
+
+export function OtherActivityList({
+  activities,
+  canEdit,
+}: {
+  activities: OtherActivity[];
+  canEdit: boolean;
+}) {
+  return (
+    <ActivitySection
+      icon={<Heart className="h-5 w-5 text-purple-400" />}
+      title="Aktivitas Pendukung & Pemulihan"
+      description={`${activities.length} catatan aktivitas pendukung`}
+    >
+      {activities.length > 0 ? (
+        <div className="space-y-3">
+          {activities.map((activity) => (
+            <ActivityItem
+              key={activity.id}
+              kind="other"
+              activity={activity}
+              canEdit={canEdit}
+            />
+          ))}
+        </div>
+      ) : (
+        <EmptyActivityList
+          message="Belum ada aktivitas pendukung/pemulihan yang dicatat hari ini."
         />
       )}
     </ActivitySection>
@@ -91,7 +126,7 @@ function ActivitySection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-zinc-950 p-6">
+    <section className="rounded-2xl border border-app-border bg-app-surface p-5 sm:p-6">
       <div className="flex items-center gap-3">
         <div className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-zinc-400">
           {icon}
@@ -119,7 +154,7 @@ function EmptyActivityList({
   message: string;
 }) {
   return (
-    <div className="flex min-h-40 items-center justify-center rounded-2xl border border-dashed border-white/10 bg-black/20 px-6">
+    <div className="flex min-h-36 items-center justify-center rounded-2xl border border-dashed border-white/10 bg-black/20 px-6">
       <div className="text-center">
         <Inbox className="mx-auto h-7 w-7 text-zinc-700" />
 
