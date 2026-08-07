@@ -1,68 +1,122 @@
-import { Zap, Target, Flame } from "lucide-react";
+"use client";
+
+import React, { useRef } from "react";
+import { Icon } from "@iconify/react";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 const dimensions = [
   {
     id: "energy",
     name: "Energy",
-    weight: "35%",
-    description: "Kapasitas fisik dan stamina Anda sepanjang hari. Diukur dari aktivitas, durasi tidur, dan kualitas istirahat.",
-    icon: <Zap className="w-6 h-6 text-emerald-400" />,
+    weight: "35% Weight",
+    description: "Kapasitas fisik dan stamina Anda sepanjang hari. Diukur dari aktivitas harian, durasi & kualitas tidur, serta pemulihan tubuh.",
+    iconName: "line-md:sun-rising-loop",
+    colorClass: "border-amber-500/30 bg-amber-500/10 text-amber-500 dark:text-amber-400",
+    badgeClass: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    glowClass: "from-amber-500/20 via-amber-500/5 to-transparent",
   },
   {
     id: "focus",
     name: "Focus",
-    weight: "35%",
-    description: "Ketajaman mental dan konsentrasi. Dievaluasi melalui sesi deep work, pembelajaran, dan minimasi distraksi.",
-    icon: <Target className="w-6 h-6 text-emerald-400" />,
+    weight: "35% Weight",
+    description: "Ketajaman mental dan konsentrasi. Dievaluasi melalui intensitas sesi deep work, pembelajaran, dan efisiensi penyelesaian tugas.",
+    iconName: "line-md:compass-loop",
+    colorClass: "border-sky-500/30 bg-sky-500/10 text-sky-500 dark:text-sky-400",
+    badgeClass: "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+    glowClass: "from-sky-500/20 via-sky-500/5 to-transparent",
   },
   {
     id: "discipline",
     name: "Discipline",
-    weight: "30%",
-    description: "Konsistensi eksekusi rutinitas. Dinilai dari kepatuhan jadwal, penyelesaian tugas, dan penolakan impuls.",
-    icon: <Flame className="w-6 h-6 text-emerald-400" />,
+    weight: "30% Weight",
+    description: "Konsistensi eksekusi rutinitas. Dinilai dari latihan fisik, kepatuhan jadwal harian, dan pembentukan kebiasaan positif.",
+    iconName: "line-md:speed-loop",
+    colorClass: "border-purple-500/30 bg-purple-500/10 text-purple-500 dark:text-purple-400",
+    badgeClass: "border-purple-500/20 bg-purple-500/10 text-purple-600 dark:text-purple-400",
+    glowClass: "from-purple-500/20 via-purple-500/5 to-transparent",
   }
 ];
 
 export function ValueProposition() {
+  const targetRef = useRef<HTMLDivElement>(null);
+
+  // Track vertical scroll progress of this section
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start start", "end end"],
+  });
+
+  // Transform vertical scroll progress to horizontal translation
+  const x = useTransform(scrollYProgress, [0, 1], ["0%", "-60%"]);
+
   return (
-    <section id="scoring-engine" className="py-24 relative overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
+    <section 
+      ref={targetRef}
+      id="scoring-engine" 
+      className="relative h-[250vh] sm:h-[300vh]"
+    >
+      {/* Sticky Fullscreen Immersive Canvas */}
+      <div className="sticky top-0 flex h-screen items-center overflow-hidden py-10">
+        <div className="w-full">
+          
+          {/* Section Header */}
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-8 text-center space-y-2">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold font-heading tracking-tight text-foreground">
+              3 Dimensi <span className="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">Performa Superior</span>
+            </h2>
+          </div>
 
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-5xl font-bold font-heading mb-6 tracking-tight">
-            3 Dimensi <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-600">Performa Superior</span>
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            HuMob memecah performa harian Anda ke dalam tiga metrik fundamental yang dikalkulasi secara deterministik.
-          </p>
-        </div>
+          {/* Immersive Scroll-Driven Horizontal Motion Track */}
+          <motion.div style={{ x }} className="flex gap-8 pl-4 sm:pl-12 lg:pl-24 pr-12 w-max">
+            {dimensions.map((dim, idx) => (
+              <div
+                key={dim.id}
+                className="w-[340px] sm:w-[420px] lg:w-[460px] shrink-0 rounded-3xl border border-border/80 bg-background/95 dark:bg-zinc-950/90 backdrop-blur-2xl p-8 sm:p-10 shadow-2xl shadow-black/10 dark:shadow-emerald-950/20 transition-all duration-500 hover:border-emerald-500/40 relative overflow-hidden flex flex-col justify-between group"
+              >
+                {/* Subtle Ambient Radial Glow */}
+                <div className={`absolute -inset-1 rounded-3xl bg-gradient-to-br ${dim.glowClass} opacity-40 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`} />
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {dimensions.map((dim) => (
-            <div key={dim.id} className="glass-card p-8 group hover:border-emerald-500/30 transition-all duration-300 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <div className="text-9xl font-black font-mono tracking-tighter -mt-10 -mr-6">
-                  {dim.name[0]}
+                {/* Background Watermark Number */}
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-15 transition-opacity select-none pointer-events-none">
+                  <div className="text-9xl font-black font-mono tracking-tighter -mt-6 -mr-4 text-foreground">
+                    0{idx + 1}
+                  </div>
+                </div>
+                
+                <div className="space-y-6 relative z-10">
+                  <div className="flex items-center justify-between">
+                    
+                    {/* Iconify Native Animated SVG Container */}
+                    <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center shadow-md ${dim.colorClass}`}>
+                      <Icon icon={dim.iconName} className="w-8 h-8" />
+                    </div>
+
+                    <span className={`font-mono text-xs font-bold px-3 py-1.5 rounded-full border tabular-nums shadow-sm ${dim.badgeClass}`}>
+                      {dim.weight}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-3xl font-bold font-heading text-foreground tracking-tight flex items-center gap-2">
+                      {dim.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed font-sans">
+                      {dim.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-8 pt-5 border-t border-border/60 flex items-center justify-between text-xs font-mono text-muted-foreground relative z-10">
+                  <span>Deterministik 100%</span>
+                  <span className="text-emerald-500 font-semibold flex items-center gap-1.5">
+                    <Icon icon="line-md:confirm-circle-twotone-to-confirm-circle-transition" className="w-4 h-4 text-emerald-500" />
+                    Verified Metric
+                  </span>
                 </div>
               </div>
-              
-              <div className="flex items-center justify-between mb-6 relative z-10">
-                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform duration-300">
-                  {dim.icon}
-                </div>
-                <div className="font-mono font-semibold text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full text-sm">
-                  Bobot: {dim.weight}
-                </div>
-              </div>
-              
-              <h3 className="text-2xl font-bold font-heading mb-4 relative z-10">{dim.name}</h3>
-              <p className="text-muted-foreground leading-relaxed relative z-10">
-                {dim.description}
-              </p>
-            </div>
-          ))}
+            ))}
+          </motion.div>
+
         </div>
       </div>
     </section>

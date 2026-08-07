@@ -52,9 +52,8 @@ export function HeroSection() {
                     animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
                     exit={{ y: -40, opacity: 0, filter: "blur(8px)" }}
                     transition={{
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 25,
+                      duration: 0.35,
+                      ease: "easeInOut",
                     }}
                     className="inline-block bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 dark:from-emerald-400 dark:via-teal-300 dark:to-cyan-400 bg-clip-text text-transparent drop-shadow-sm font-extrabold"
                   >

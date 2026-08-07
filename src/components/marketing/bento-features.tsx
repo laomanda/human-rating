@@ -1,8 +1,27 @@
 "use client";
 
-import { Calculator, Cpu, LineChart, Trophy, CheckCircle2, Sparkles } from "lucide-react";
+import { Calculator, Cpu, LineChart, Trophy, CheckCircle2, Sparkles, Flame, Target, Zap } from "lucide-react";
 import confetti from "canvas-confetti";
-import { Badge } from "@/components/ui/badge";
+
+/**
+ * HuMob Rating Score Color Blueprint (Solid Colors):
+ * - 0.0 - 4.9: Merah Solid (Red/Rose)
+ * - 5.0 - 6.9: Orange Solid (Amber)
+ * - 7.0 - 7.9: Hijau Solid (Emerald)
+ * - 8.0 - 10.0: Sky Blue Solid
+ */
+export const getScoreColorStyle = (score: number) => {
+  if (score >= 8.0) {
+    return "bg-sky-500 text-white border-sky-400 font-extrabold shadow-sm";
+  }
+  if (score >= 7.0) {
+    return "bg-emerald-600 dark:bg-emerald-500 text-white border-emerald-500 font-extrabold shadow-sm";
+  }
+  if (score >= 5.0) {
+    return "bg-amber-500 text-white border-amber-400 font-extrabold shadow-sm";
+  }
+  return "bg-rose-600 dark:bg-rose-500 text-white border-rose-500 font-extrabold shadow-sm";
+};
 
 export function BentoFeatures() {
   const triggerConfetti = () => {
@@ -10,139 +29,147 @@ export function BentoFeatures() {
       particleCount: 80,
       spread: 70,
       origin: { y: 0.7 },
-      colors: ["#10b981", "#38bdf8", "#f59e0b"],
+      colors: ["#38bdf8", "#10b981", "#f59e0b"],
     });
   };
 
   return (
-    <section id="features" className="py-20">
+    <section id="features" className="py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        
         {/* Section Header */}
-        <div className="mx-auto max-w-3xl text-center space-y-4 mb-16">
-          <Badge variant="default" className="px-3.5 py-1 text-xs">
-            Arsitektur & Fitur Utama
-          </Badge>
+        <div className="mx-auto max-w-2xl text-center space-y-3 mb-12">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Sistem Performa Harian Anti-Slop
+            Teknologi Performa Tanpa Bias
           </h2>
-          <p className="text-base text-muted-foreground">
-            Kombinasi kalkulasi matematis objektif dan kecerdasan buatan untuk mengeliminasi penilaian subjektif.
+          <p className="text-sm sm:text-base text-muted-foreground font-sans">
+            Sistem evaluasi berbasis matematika murni dan kecerdasan buatan terukur.
           </p>
         </div>
 
         {/* Asymmetric Bento Grid */}
         <div className="grid gap-6 md:grid-cols-12">
-          {/* Card A (Large - 7 cols): Deterministic Scoring Engine */}
-          <div className="glass-card rounded-2xl border-t border-white/15 dark:border-white/15 border-black/10 p-8 shadow-sm hover:-translate-y-0.5 hover:border-emerald-500/30 transition-all duration-200 md:col-span-7 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
-                <Calculator className="h-6 w-6" />
+          
+          {/* Card A (7 cols): Algoritma Deterministik */}
+          <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-sm hover:border-emerald-500/30 transition-all duration-300 md:col-span-7 flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-500">
+                <Calculator className="h-5 w-5" />
               </div>
-              <h3 className="font-heading text-2xl font-bold text-foreground">
-                Deterministic Logic Scoring Engine
+              <h3 className="font-heading text-xl font-bold text-foreground">
+                Algoritma Deterministik
               </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Algoritma HuMob menghitung skor secara transparan berdasarkan data matematis aktivitas fisik, 
-                durasi tidur, dan volume kerja produktif. Tanpa prasangka, tanpa asumsi buatan.
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
+                Kalkulasi skor otomatis berbasis formula transparan. Menganalisis data aktivitas fisik, jam tidur, dan durasi kerja secara objektif.
               </p>
             </div>
 
-            <div className="mt-8 rounded-xl border border-app-border bg-app-surface/60 p-4 space-y-2.5">
-              <div className="flex items-center justify-between text-xs">
+            <div className="mt-6 rounded-xl border border-border bg-muted/40 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
                 <span className="font-medium text-foreground flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Math Base Formula
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Formula Utama
                 </span>
-                <span className="font-mono text-emerald-400">100% Deterministic</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% Math</span>
               </div>
-              <p className="font-mono text-xs text-muted-foreground leading-relaxed">
+              <p className="font-mono text-xs text-muted-foreground">
                 BaseScore = (Energy × 0.35) + (Focus × 0.35) + (Discipline × 0.30)
               </p>
             </div>
           </div>
 
-          {/* Card B (Medium - 5 cols): Groq AI Rating Engine */}
-          <div className="glass-card rounded-2xl border-t border-white/15 dark:border-white/15 border-black/10 p-8 shadow-sm hover:-translate-y-0.5 hover:border-emerald-500/30 transition-all duration-200 md:col-span-5 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-400">
-                <Cpu className="h-6 w-6" />
+          {/* Card B (5 cols): Groq AI Engine */}
+          <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-sm hover:border-emerald-500/30 transition-all duration-300 md:col-span-5 flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-500">
+                <Cpu className="h-5 w-5" />
               </div>
-              <h3 className="font-heading text-2xl font-bold text-foreground">
-                Groq AI Rating Engine
+              <h3 className="font-heading text-xl font-bold text-foreground">
+                Groq AI Engine
               </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Didukung oleh model Llama 3 70B via Groq API. Memberikan saran reflektif mendalam dan fine-tuning skor yang presisi dalam hitungan milidetik.
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
+                Analisis AI super cepat yang memberikan wawasan evaluasi dan rekomendasi perbaikan performa harian.
               </p>
             </div>
 
-            <div className="mt-8 flex items-center justify-between rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs">
-              <span className="text-muted-foreground">Kecepatan Inference</span>
-              <span className="font-mono font-bold text-cyan-400">&lt; 250ms Response</span>
+            <div className="mt-6 flex items-center justify-between rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3.5 text-xs font-mono">
+              <span className="text-muted-foreground">Kecepatan Respon</span>
+              <span className="font-bold text-cyan-600 dark:text-cyan-400">&lt; 250ms Latency</span>
             </div>
           </div>
 
-          {/* Card C (Medium - 5 cols): Visual Performance Analytics */}
-          <div id="analytics" className="glass-card rounded-2xl border-t border-white/15 dark:border-white/15 border-black/10 p-8 shadow-sm hover:-translate-y-0.5 hover:border-emerald-500/30 transition-all duration-200 md:col-span-5 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-sky-500/20 bg-sky-500/10 text-sky-400">
-                <LineChart className="h-6 w-6" />
+          {/* Card C (5 cols): Analytics Harian */}
+          <div id="analytics" className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-sm hover:border-emerald-500/30 transition-all duration-300 md:col-span-5 flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-500/20 bg-sky-500/10 text-sky-500">
+                <LineChart className="h-5 w-5" />
               </div>
-              <h3 className="font-heading text-2xl font-bold text-foreground">
-                Performance Analytics & Calendar
+              <h3 className="font-heading text-xl font-bold text-foreground">
+                Analytics Harian
               </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Pantau grafik konsistensi mingguan dan bulanan. Dilengkapi fitur kalender interaktif untuk memeriksa riwayat rating harian Anda.
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
+                Pantau riwayat perkembangan skor dan grafik konsistensi performamu dari hari ke hari.
               </p>
             </div>
 
-            <div className="mt-8 grid grid-cols-7 gap-1.5">
-              {[8.8, 9.2, 7.8, 9.5, 8.9, 9.1, 9.6].map((score, index) => (
-                <div key={index} className="flex flex-col items-center gap-1">
+            {/* Rating Score History Boxes - Official SOLID Color Blueprint */}
+            <div className="mt-6 space-y-1.5">
+              <div className="text-[11px] font-mono text-muted-foreground flex justify-between px-0.5">
+                <span>7-Day History</span>
+                <span className="text-sky-500 font-semibold">Avg 8.6</span>
+              </div>
+              <div className="grid grid-cols-7 gap-1.5">
+                {[4.5, 6.2, 7.8, 8.8, 9.2, 9.5, 8.9].map((score, index) => (
                   <div
-                    className="w-full rounded-md bg-emerald-500/20 border border-emerald-500/30 transition-all hover:bg-emerald-500/40"
-                    style={{ height: `${score * 4}px` }}
-                  />
-                  <span className="font-mono text-[10px] text-muted-foreground">{score}</span>
-                </div>
-              ))}
+                    key={index}
+                    className={`h-9 w-full rounded-lg border flex items-center justify-center font-mono text-xs tabular-nums transition-transform hover:scale-105 ${getScoreColorStyle(score)}`}
+                  >
+                    {score}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Card D (7 cols): Streak Master & Achievement Unlocks */}
-          <div className="glass-card rounded-2xl border-t border-white/15 dark:border-white/15 border-black/10 p-8 shadow-sm hover:-translate-y-0.5 hover:border-emerald-500/30 transition-all duration-200 md:col-span-7 flex flex-col justify-between">
-            <div className="space-y-4">
+          {/* Card D (7 cols): Streak & Achievements */}
+          <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-sm hover:border-emerald-500/30 transition-all duration-300 md:col-span-7 flex flex-col justify-between">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
-                  <Trophy className="h-6 w-6" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-500">
+                  <Trophy className="h-5 w-5" />
                 </div>
                 <button
                   type="button"
                   onClick={triggerConfetti}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400 transition-all hover:bg-amber-500/20 active:scale-95"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-mono font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 active:scale-95 transition-all"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span>Test Unlock Confetti 🎉</span>
+                  <span>Simulasi Perayaan</span>
                 </button>
               </div>
-              <h3 className="font-heading text-2xl font-bold text-foreground">
-                Streak Master & Achievement System
+              <h3 className="font-heading text-xl font-bold text-foreground">
+                Streak & Achievements
               </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Dapatkan penghargaan otomatis saat mencapai rekor konsistensi. Buka badge eksklusif seperti <i>Unbeaten Week</i>, <i>Good Form</i>, dan <i>Elite Performance</i>.
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
+                Raih pencapaian otomatis saat berhasil menjaga rekor konsistensi rating harian.
               </p>
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs font-medium text-amber-300">
-                🏆 Unbeaten Week (7-Day Streak)
+            <div className="mt-6 flex flex-wrap items-center gap-2.5 font-mono text-xs">
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 font-medium text-amber-600 dark:text-amber-400">
+                <Flame className="h-3.5 w-3.5 text-amber-500" />
+                Unbeaten Week (7-Day)
               </span>
-              <span className="inline-flex items-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-xs font-medium text-sky-300">
-                🎯 Focused (Focus ≥ 8.0)
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 font-medium text-sky-600 dark:text-sky-400">
+                <Target className="h-3.5 w-3.5 text-sky-500" />
+                Focused Streak
               </span>
-              <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs font-medium text-emerald-300">
-                ⚡ Elite Performance (Overall ≥ 9.0)
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+                <Zap className="h-3.5 w-3.5 text-emerald-500" />
+                Elite Performance
               </span>
             </div>
           </div>
+
         </div>
       </div>
     </section>

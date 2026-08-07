@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Calculator, Zap, ArrowRight } from "lucide-react";
+import { Calculator } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { getScoreColorStyle } from "@/components/marketing/bento-features";
 
 type SamplePreset = {
   label: string;
@@ -18,7 +18,7 @@ type SamplePreset = {
 
 const PRESETS: SamplePreset[] = [
   {
-    label: "🔥 Super Productive Day",
+    label: "Hari Super Produktif",
     activity: "Tidur 8 jam, Olahraga gym 1 jam, Coding Next.js & Supabase 5 jam",
     energy: 9.0,
     focus: 9.5,
@@ -26,7 +26,7 @@ const PRESETS: SamplePreset[] = [
     insight: "Performa luar biasa! Tidur optimal dan kerja fokus tinggi memberikan dorongan maksimal pada kriteria Focus & Discipline.",
   },
   {
-    label: "🏃 Active Recovery",
+    label: "Pemulihan Aktif",
     activity: "Tidur 7 jam, Lari pagi 6 km, Belajar Bahasa 2 jam, Rest & Meditasi",
     energy: 8.5,
     focus: 8.0,
@@ -34,7 +34,7 @@ const PRESETS: SamplePreset[] = [
     insight: "Keseimbangan fisik yang sangat baik. Aktivitas pemulihan menjaga tingkat energi stabil sepanjang hari.",
   },
   {
-    label: "😴 Heavy Work, Low Sleep",
+    label: "Kerja Berat, Kurang Tidur",
     activity: "Tidur 4 jam, Lembur kantor 8 jam, Tanpa olahraga",
     energy: 5.2,
     focus: 7.0,
@@ -85,20 +85,20 @@ export function RatingSimulator() {
 
       const overall = Number(((energy * 0.35) + (focus * 0.35) + (discipline * 0.30)).toFixed(1));
 
-      if (overall >= 9.0) {
+      if (overall >= 8.0) {
         confetti({
-          particleCount: 100,
-          spread: 80,
+          particleCount: 80,
+          spread: 70,
           origin: { y: 0.6 },
-          colors: ["#10b981", "#38bdf8", "#f59e0b"],
+          colors: ["#38bdf8", "#10b981", "#f59e0b"],
         });
-        insight = "🎉 Elite Performance! Kombinasi ideal antara pemulihan energi, fokus tinggi, dan kedisiplinan fisik.";
-      } else if (overall < 6.0) {
-        insight = "⚠️ Performa membutuhkan optimasi. Perhatikan durasi tidur dan prioritaskan kebiasaan fisik harian.";
+        insight = "Performa Luar Biasa! Kombinasi ideal antara pemulihan energi, fokus tinggi, dan kedisiplinan fisik.";
+      } else if (overall < 5.0) {
+        insight = "Performa membutuhkan optimasi. Perhatikan durasi tidur dan prioritaskan kebiasaan fisik harian.";
       }
 
       setSimulated({
-        label: "Simulasi Custom",
+        label: "Simulasi Khusus",
         activity: text,
         energy,
         focus,
@@ -115,24 +115,22 @@ export function RatingSimulator() {
   );
 
   return (
-    <section id="how-it-works" className="py-20 bg-secondary/30 border-y border-app-border">
+    <section id="how-it-works" className="py-16 md:py-24 relative overflow-hidden">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl text-center space-y-4 mb-12">
-          <Badge variant="focus" className="px-3.5 py-1 text-xs">
-            Interaktif Simulator
-          </Badge>
+        
+        {/* Section Header */}
+        <div className="mx-auto max-w-2xl text-center space-y-3 mb-12">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Simulasikan Rating Performamu
           </h2>
-          <p className="text-base text-muted-foreground">
-            Coba ketik rangkuman aktivitas harianmu di bawah ini dan lihat bagaimana HuMob AI Engine mengkalkulasi skor performamu.
-          </p>
         </div>
 
-        <div className="mx-auto max-w-4xl glass-card rounded-2xl border-t border-white/15 dark:border-white/15 border-black/10 p-6 sm:p-8 shadow-xl">
+        {/* Main Card Container - 100% Consistent Glass Card */}
+        <div className="mx-auto max-w-4xl rounded-2xl border border-border/80 bg-background/90 dark:bg-zinc-950/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-black/5 dark:shadow-emerald-950/10">
+          
           {/* Preset Buttons */}
           <div className="flex flex-wrap items-center gap-2 mb-6">
-            <span className="text-xs font-medium text-muted-foreground mr-1">Preset Sampel:</span>
+            <span className="text-xs font-mono text-muted-foreground mr-1">Preset Sampel:</span>
             {PRESETS.map((preset, idx) => (
               <button
                 key={idx}
@@ -141,7 +139,11 @@ export function RatingSimulator() {
                   setInputActivity(preset.activity);
                   setSimulated(preset);
                 }}
-                className="rounded-xl border border-app-border bg-app-surface px-3 py-1.5 text-xs font-medium text-foreground transition-all hover:bg-white/5 active:scale-95"
+                className={`rounded-lg border px-3 py-1.5 text-xs font-mono font-medium transition-all active:scale-95 ${
+                  inputActivity === preset.activity
+                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold"
+                    : "border-border/60 bg-muted/40 hover:bg-muted text-foreground"
+                }`}
               >
                 {preset.label}
               </button>
@@ -162,53 +164,45 @@ export function RatingSimulator() {
               value={inputActivity}
               onChange={(e) => setInputActivity(e.target.value)}
               placeholder="Misal: Tidur 8 jam, Lari 5 km, Kerja Next.js 4 jam..."
-              className="h-12 text-sm sm:text-base flex-1"
+              className="h-12 text-sm flex-1 font-sans bg-background border-border/80 focus:border-emerald-500"
             />
             <Button
               type="submit"
               size="lg"
               disabled={isCalculating || !inputActivity.trim()}
-              className="w-full sm:w-auto h-12 px-6 font-semibold"
+              className="w-full sm:w-auto h-12 px-6 font-semibold bg-emerald-600 hover:bg-emerald-500 text-white"
             >
-              <Calculator className="h-4 w-4" />
+              <Calculator className="h-4 w-4 mr-2" />
               <span>{isCalculating ? "Menghitung..." : "Kalkulasi Skor"}</span>
             </Button>
           </form>
 
-          {/* Results Grid */}
-          <div className="rounded-xl border border-app-border bg-app-surface p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-app-border pb-5">
+          {/* Results Box */}
+          <div className="rounded-xl border border-border/80 bg-card p-6 space-y-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-5">
               <div>
-                <div className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-emerald-400" />
-                  <h3 className="font-heading text-lg font-bold text-foreground">Hasil Simulasi Rating</h3>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Formula: BaseMath (70%) + Groq AI Refinement (30%)
-                </p>
+                <h3 className="font-heading text-lg font-bold text-foreground">Hasil Simulasi Rating</h3>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground font-medium">Overall Rating:</span>
-                <Badge
-                  variant={overallScore >= 9.0 ? "overall" : overallScore >= 7.5 ? "default" : "destructive"}
-                  className="font-mono text-lg px-4 py-1.5 tabular-nums"
-                >
+                <span className="text-xs text-muted-foreground font-mono">Skor Keseluruhan:</span>
+                <span className={`px-3.5 py-1.5 rounded-lg border text-base tabular-nums ${getScoreColorStyle(overallScore)}`}>
                   {overallScore.toFixed(1)} / 10.0
-                </Badge>
+                </span>
               </div>
             </div>
 
             {/* Individual Dimension Bars */}
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-amber-400">Energy (35%)</span>
-                  <span className="font-mono text-sm font-bold text-amber-400 tabular-nums">
+              {/* Energy */}
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
+                <div className="flex justify-between items-center text-xs font-mono">
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">Energy (35%)</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400 tabular-nums">
                     {simulated.energy.toFixed(1)}
                   </span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                <div className="h-2 w-full rounded-full bg-amber-500/20 overflow-hidden">
                   <div
                     className="h-full bg-amber-500 rounded-full transition-all duration-500"
                     style={{ width: `${simulated.energy * 10}%` }}
@@ -216,14 +210,15 @@ export function RatingSimulator() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-sky-400">Focus (35%)</span>
-                  <span className="font-mono text-sm font-bold text-sky-400 tabular-nums">
+              {/* Focus */}
+              <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 space-y-2">
+                <div className="flex justify-between items-center text-xs font-mono">
+                  <span className="font-semibold text-sky-600 dark:text-sky-400">Focus (35%)</span>
+                  <span className="font-bold text-sky-600 dark:text-sky-400 tabular-nums">
                     {simulated.focus.toFixed(1)}
                   </span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                <div className="h-2 w-full rounded-full bg-sky-500/20 overflow-hidden">
                   <div
                     className="h-full bg-sky-500 rounded-full transition-all duration-500"
                     style={{ width: `${simulated.focus * 10}%` }}
@@ -231,14 +226,15 @@ export function RatingSimulator() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-purple-400">Discipline (30%)</span>
-                  <span className="font-mono text-sm font-bold text-purple-400 tabular-nums">
+              {/* Discipline */}
+              <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-4 space-y-2">
+                <div className="flex justify-between items-center text-xs font-mono">
+                  <span className="font-semibold text-purple-600 dark:text-purple-400">Discipline (30%)</span>
+                  <span className="font-bold text-purple-600 dark:text-purple-400 tabular-nums">
                     {simulated.discipline.toFixed(1)}
                   </span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                <div className="h-2 w-full rounded-full bg-purple-500/20 overflow-hidden">
                   <div
                     className="h-full bg-purple-500 rounded-full transition-all duration-500"
                     style={{ width: `${simulated.discipline * 10}%` }}
@@ -248,10 +244,12 @@ export function RatingSimulator() {
             </div>
 
             {/* AI Insight Box */}
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs leading-relaxed text-emerald-300 dark:text-emerald-300">
-              💡 <strong>AI Reflective Insight:</strong> &quot;{simulated.insight}&quot;
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs leading-relaxed text-foreground font-sans">
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">Analisis Reflektif AI: </span>
+              <span>&quot;{simulated.insight}&quot;</span>
             </div>
           </div>
+
         </div>
       </div>
     </section>
