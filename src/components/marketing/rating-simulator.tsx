@@ -121,7 +121,7 @@ export function RatingSimulator() {
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center space-y-3 mb-12">
           <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Simulasikan Rating Performamu
+            Simulasikan Rating <span className="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">Performamu</span>
           </h2>
         </div>
 
