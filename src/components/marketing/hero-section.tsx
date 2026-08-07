@@ -1,140 +1,102 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Play, Shield, Zap, Flame } from "lucide-react";
+import { ArrowRight, Play, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { SplineScene } from "@/components/marketing/spline-scene";
+import { Hero3DCard } from "@/components/marketing/hero-3d-card";
+import { Hero3DBackground } from "@/components/marketing/hero-3d-background";
+
+const DYNAMIC_KEYWORDS = [
+  "Secara Objektif",
+  "Tanpa Self-Bias",
+  "100% Deterministik",
+  "Secara Presisi",
+];
 
 export function HeroSection() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % DYNAMIC_KEYWORDS.length);
+    }, 2800);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <section className="relative overflow-hidden pt-12 pb-16 md:pt-20 md:pb-28">
-      {/* Subtle Background Glows (Anti-Slop, Ambient Diffused) */}
-      <div className="pointer-events-none absolute left-1/2 top-0 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-emerald-500/[0.04] blur-[120px] dark:bg-emerald-500/[0.06]" />
-      <div className="pointer-events-none absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-cyan-500/[0.03] blur-[100px]" />
+    <section className="relative overflow-hidden min-h-[calc(100dvh-4rem)] flex items-center justify-center py-8">
+      {/* 3D Animated Background Grid & Orbs */}
+      <Hero3DBackground />
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-12 lg:grid-cols-12 lg:items-center lg:gap-8">
-          {/* Left Column: Copy & Actions */}
-          <div className="flex flex-col items-start space-y-6 lg:col-span-7">
-            {/* Version Badge Pill */}
-            <div className="inline-flex items-center gap-2.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-medium text-emerald-400 dark:border-emerald-500/30 dark:bg-emerald-500/15">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>🚀 HuMob 2.0 • Deterministic Math + Groq AI Engine</span>
-            </div>
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full">
+        <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
+          
+          {/* Left Column: Animated Dynamic Headline & Actions */}
+          <div className="flex flex-col items-start space-y-6 lg:col-span-6">
 
-            {/* Main Headline */}
-            <h1 className="font-heading text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl lg:text-6xl leading-[1.1]">
+            {/* Interactive Animated Headline */}
+            <motion.h1 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.15]"
+            >
               Ukur Performa Harianmu{" "}
-              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                Secara Objektif
-              </span>{" "}
-              Tanpa Self-Bias.
-            </h1>
+              <span className="block h-[1.3em] overflow-hidden py-1">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={DYNAMIC_KEYWORDS[index]}
+                    initial={{ y: 40, opacity: 0, filter: "blur(8px)" }}
+                    animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+                    exit={{ y: -40, opacity: 0, filter: "blur(8px)" }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 25,
+                    }}
+                    className="inline-block bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent drop-shadow-sm"
+                  >
+                    {DYNAMIC_KEYWORDS[index]}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
+            </motion.h1>
 
-            {/* Subheadline */}
-            <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              HuMob membantu Anda mencatat aktivitas fisik, tidur, dan produktivitas harian. 
-              Dievaluasi secara ilmiah menggunakan kombinasi kalkulasi matematika deterministik dan Groq AI Engine.
-            </p>
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Button asChild size="lg" className="shadow-lg shadow-emerald-500/20">
-                <Link href="/dashboard/today">
-                  <span>Mulai Rating Harian</span>
-                  <ArrowRight className="h-4 w-4" />
+            {/* Animated Action Buttons */}
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="flex flex-wrap items-center gap-3 pt-2"
+            >
+              <Button asChild size="lg" className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md shadow-emerald-600/20 active:scale-[0.985] transition-all hover:scale-105">
+                <Link href="/dashboard">
+                  <span>Mulai Ukur Gratis</span>
+                  <ArrowRight className="h-4 w-4 ml-1.5" />
                 </Link>
               </Button>
 
-              <Button asChild variant="outline" size="lg">
-                <a href="#simulator">
-                  <Play className="h-4 w-4 text-emerald-500 fill-emerald-500/20" />
-                  <span>Lihat Demo Scoring</span>
+              <Button asChild variant="outline" size="lg" className="border-border hover:bg-accent active:scale-[0.985] transition-all hover:scale-105">
+                <a href="#how-it-works">
+                  <Play className="h-4 w-4 text-emerald-500 fill-emerald-500/20 mr-1.5" />
+                  <span>Lihat Cara Kerja</span>
                 </a>
               </Button>
-            </div>
-
-            {/* Quick Proof Pills */}
-            <div className="flex flex-wrap items-center gap-6 pt-4 text-xs font-medium text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-emerald-500" />
-                <span>100% Data Private</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-500" />
-                <span>Real-time Scoring</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Flame className="h-4 w-4 text-rose-500" />
-                <span>Streak & Achievements</span>
-              </div>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Right Column: 3D Scene / Interactive Card */}
-          <div className="lg:col-span-5">
-            <div className="relative">
-              {/* 3D Spline Component Wrapper (Desktop) */}
-              <div className="hidden lg:block h-[420px] w-full rounded-2xl glass-card border-t border-white/15 dark:border-white/15 border-black/10 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-                <SplineScene sceneUrl="https://prod.spline.design/6Wnt13KfeW-Fm2yC/scene.splinecode" />
-              </div>
+          {/* Right Column: Elegant Interactive 3D Perspective Showcase */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="lg:col-span-6"
+          >
+            <Hero3DCard />
+          </motion.div>
 
-              {/* Mobile & Fallback Rating Card */}
-              <div className="glass-card rounded-2xl border-t border-white/15 dark:border-white/15 border-black/10 p-6 shadow-xl space-y-5 lg:mt-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      <Zap className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-heading font-semibold text-foreground text-sm">Preview Daily Match</h3>
-                      <p className="text-xs text-muted-foreground">Hari Ini • Verified AI Result</p>
-                    </div>
-                  </div>
-                  <Badge variant="overall" className="font-mono text-sm px-3 py-1">
-                    9.1 / 10.0
-                  </Badge>
-                </div>
-
-                <div className="space-y-3 pt-2">
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Energy (Tidur & Pemulihan)</span>
-                      <span className="font-mono font-medium text-amber-400">8.8 / 10</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                      <div className="h-full bg-amber-500 rounded-full w-[88%]" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Focus (Kerja & Pembelajaran)</span>
-                      <span className="font-mono font-medium text-sky-400">9.4 / 10</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                      <div className="h-full bg-sky-500 rounded-full w-[94%]" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Discipline (Aktivitas Fisik)</span>
-                      <span className="font-mono font-medium text-purple-400">9.2 / 10</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                      <div className="h-full bg-purple-500 rounded-full w-[92%]" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-app-border bg-app-surface/60 p-3 text-xs leading-relaxed text-muted-foreground">
-                  💬 <strong className="text-foreground">AI Insight:</strong> &quot;Konsistensi latihan fisik dan durasi tidur 7.5 jam memperkuat fokus kerja produktif Anda hari ini.&quot;
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>

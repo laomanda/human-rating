@@ -28,6 +28,11 @@ export const metadata: Metadata = {
   title: "HuMob | Personal Performance Rating Platform",
   description:
     "HuMob adalah platform personal performance yang membantu pengguna mencatat aktivitas harian, mendapatkan penilaian performa, melihat perkembangan diri, dan membangun profil performa.",
+  icons: {
+    icon: "/logo.webp",
+    shortcut: "/logo.webp",
+    apple: "/logo.webp",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

@@ -115,7 +115,7 @@ export function RatingSimulator() {
   );
 
   return (
-    <section id="simulator" className="py-20 bg-secondary/30 border-y border-app-border">
+    <section id="how-it-works" className="py-20 bg-secondary/30 border-y border-app-border">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center space-y-4 mb-12">
           <Badge variant="focus" className="px-3.5 py-1 text-xs">
